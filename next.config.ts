@@ -7,6 +7,7 @@ const apiProxyTarget = (
 ).replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
+  // Fallback proxy; primary proxy is src/app/api/v1/[...path]/route.ts (runtime env + ngrok headers)
   async rewrites() {
     return [
       {

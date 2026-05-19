@@ -45,7 +45,7 @@ export default function LoginPage() {
       } else if (err instanceof AxiosError) {
         if (!err.response) {
           setError(
-            "Cannot reach the API. Check that the backend is deployed and NEXT_PUBLIC_API_BASE_URL is set on Vercel."
+            "Cannot reach the API. Redeploy the latest adminapp code, set NEXT_PUBLIC_API_BASE_URL on Vercel, keep ngrok running, and check Network — login should call this site's /api/v1/auth/login, not ngrok directly."
           );
         } else {
           setError(

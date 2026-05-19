@@ -3,6 +3,7 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { MiniBarChart } from "@/components/ui/mini-bar-chart";
 import { StatCard } from "@/components/ui/stat-card";
+import { PanelSkeleton, StatCardSkeleton } from "@/components/ui/skeleton";
 import { analyticsApi } from "@/lib/api/modules/analytics";
 import type { AnalyticsOverview } from "@/types/domain";
 import { BarChart3, MapPin, RefreshCcw, TrendingUp } from "lucide-react";
@@ -69,7 +70,14 @@ export default function AnalyticsPage() {
       />
 
       {loading ? (
-        <div className="panel p-5 text-sm muted">Loading analytics...</div>
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </div>
+          <PanelSkeleton lines={6} />
+        </>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
