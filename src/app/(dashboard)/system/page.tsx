@@ -92,7 +92,6 @@ export default function SystemPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="panel-title">System & Integrations</h2>
       <div className="panel p-5">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Property Metadata (API Integration)

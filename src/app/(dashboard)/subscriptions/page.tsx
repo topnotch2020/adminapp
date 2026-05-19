@@ -89,8 +89,7 @@ export default function SubscriptionsPage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="panel-title">Subscription & Access</h2>
+      <div className="flex items-center justify-end">
         <input
           className="input !py-1.5"
           placeholder="Search broker / email / plan"

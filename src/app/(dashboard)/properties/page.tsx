@@ -95,7 +95,6 @@ export default function PropertiesPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="panel-title">Properties</h2>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="panel p-4">
           <p className="text-xs muted">Total</p>

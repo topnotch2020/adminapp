@@ -55,7 +55,6 @@ export default function AuditPage() {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="panel-title">Audit Logs</h2>
           <p className="text-sm muted">Trace admin actions and system events.</p>
         </div>
         <div className="flex items-center gap-2">

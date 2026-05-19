@@ -63,7 +63,6 @@ export default function NotificationsPage() {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="panel-title">Notifications</h2>
           <p className="text-sm muted">
             {filtered.length} records ({unreadCount} unread)
           </p>
