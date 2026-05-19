@@ -113,115 +113,138 @@ export default function SubscriptionsPage() {
         </div>
       </div>
       {loading ? (
-        <div className="panel p-5 text-sm text-slate-500">Loading subscription snapshot...</div>
+        <div className="panel p-5 text-sm muted">Loading subscription snapshot...</div>
+      ) : filtered.length === 0 ? (
+        <div className="panel p-5 text-sm muted">No subscription records available.</div>
       ) : (
-        <div className="panel p-6">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-slate-500">No subscription records available.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-slate-500">
-                  <tr>
-                    <th className="py-2">Broker</th>
-                    <th className="py-2">Email</th>
-                    <th className="py-2">Plan</th>
-                    <th className="py-2">Used (R/S)</th>
-                    <th className="py-2">Rent Limit</th>
-                    <th className="py-2">Sale Limit</th>
-                    <th className="py-2">Total</th>
-                    <th className="py-2">Remaining</th>
-                    <th className="py-2">Remaining (R/S)</th>
-                    <th className="py-2">Actions</th>
+        <div className="panel overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-[1120px] w-full text-left text-sm">
+              <thead className="muted" style={{ background: "var(--surface-2)" }}>
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Broker</th>
+                  <th className="px-4 py-3 font-semibold">Email</th>
+                  <th className="px-4 py-3 font-semibold">Plan</th>
+                  <th
+                    className="whitespace-nowrap px-4 py-3 text-center font-semibold"
+                    title="Used rent / sale slots"
+                  >
+                    Used (R/S)
+                  </th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold">Rent limit</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold">Sale limit</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-center font-semibold">Total</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-center font-semibold">Remaining</th>
+                  <th
+                    className="whitespace-nowrap px-4 py-3 text-center font-semibold"
+                    title="Remaining rent / sale slots"
+                  >
+                    Remaining (R/S)
+                  </th>
+                  <th className="whitespace-nowrap px-4 py-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((snapshot) => (
+                  <tr
+                    key={snapshot.brokerId || snapshot.email}
+                    className="border-t"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <td
+                      className="max-w-[160px] truncate px-4 py-3 font-medium"
+                      title={snapshot.brokerName || undefined}
+                    >
+                      {snapshot.brokerName || "-"}
+                    </td>
+                    <td className="max-w-[200px] truncate px-4 py-3" title={snapshot.email || undefined}>
+                      {snapshot.email || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">{snapshot.planName}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums">
+                      {snapshot.usedRentSlots}/{snapshot.usedSaleSlots}
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        className="input !w-20 !min-w-0 !py-1"
+                        type="number"
+                        min={0}
+                        value={
+                          snapshot.brokerId
+                            ? edits[snapshot.brokerId]?.rentSlots ?? snapshot.rentSlots
+                            : (snapshot.rentSlots ?? 10)
+                        }
+                        onChange={(event) => {
+                          if (!snapshot.brokerId) return;
+                          const value = Number(event.target.value);
+                          setEdits((prev) => ({
+                            ...prev,
+                            [snapshot.brokerId as string]: {
+                              rentSlots: value,
+                              saleSlots:
+                                prev[snapshot.brokerId as string]?.saleSlots ??
+                                (snapshot.saleSlots ?? 10),
+                            },
+                          }));
+                        }}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        className="input !w-20 !min-w-0 !py-1"
+                        type="number"
+                        min={0}
+                        value={
+                          snapshot.brokerId
+                            ? edits[snapshot.brokerId]?.saleSlots ?? snapshot.saleSlots
+                            : (snapshot.saleSlots ?? 10)
+                        }
+                        onChange={(event) => {
+                          if (!snapshot.brokerId) return;
+                          const value = Number(event.target.value);
+                          setEdits((prev) => ({
+                            ...prev,
+                            [snapshot.brokerId as string]: {
+                              rentSlots:
+                                prev[snapshot.brokerId as string]?.rentSlots ??
+                                (snapshot.rentSlots ?? 10),
+                              saleSlots: value,
+                            },
+                          }));
+                        }}
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums">
+                      {snapshot.totalSlots}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums">
+                      {snapshot.remainingSlots}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums">
+                      {snapshot.remainingRentSlots}/{snapshot.remainingSaleSlots}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          className="btn-primary !px-3 !py-1.5"
+                          disabled={saving === snapshot.brokerId}
+                          onClick={() => void saveSlotLimit(snapshot.brokerId)}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="btn-secondary !px-3 !py-1.5"
+                          onClick={() => setActiveId(snapshot.brokerId || snapshot.email || null)}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((snapshot) => (
-                    <tr key={snapshot.brokerId || snapshot.email} className="border-t border-slate-200 dark:border-slate-800">
-                      <td className="py-2">{snapshot.brokerName || "-"}</td>
-                      <td className="py-2">{snapshot.email || "-"}</td>
-                      <td className="py-2">{snapshot.planName}</td>
-                      <td className="py-2">
-                        {snapshot.usedRentSlots}/{snapshot.usedSaleSlots}
-                      </td>
-                      <td className="py-2">
-                        <input
-                          className="input !py-1"
-                          type="number"
-                          min={0}
-                          value={
-                            snapshot.brokerId
-                              ? edits[snapshot.brokerId]?.rentSlots ?? snapshot.rentSlots
-                              : (snapshot.rentSlots ?? 10)
-                          }
-                          onChange={(event) => {
-                            if (!snapshot.brokerId) return;
-                            const value = Number(event.target.value);
-                            setEdits((prev) => ({
-                              ...prev,
-                              [snapshot.brokerId as string]: {
-                                rentSlots: value,
-                                saleSlots:
-                                  prev[snapshot.brokerId as string]?.saleSlots ??
-                                  (snapshot.saleSlots ?? 10),
-                              },
-                            }));
-                          }}
-                        />
-                      </td>
-                      <td className="py-2">
-                        <input
-                          className="input !py-1"
-                          type="number"
-                          min={0}
-                          value={
-                            snapshot.brokerId
-                              ? edits[snapshot.brokerId]?.saleSlots ?? snapshot.saleSlots
-                              : (snapshot.saleSlots ?? 10)
-                          }
-                          onChange={(event) => {
-                            if (!snapshot.brokerId) return;
-                            const value = Number(event.target.value);
-                            setEdits((prev) => ({
-                              ...prev,
-                              [snapshot.brokerId as string]: {
-                                rentSlots:
-                                  prev[snapshot.brokerId as string]?.rentSlots ??
-                                  (snapshot.rentSlots ?? 10),
-                                saleSlots: value,
-                              },
-                            }));
-                          }}
-                        />
-                      </td>
-                      <td className="py-2">{snapshot.totalSlots}</td>
-                      <td className="py-2">{snapshot.remainingSlots}</td>
-                      <td className="py-2">
-                        {snapshot.remainingRentSlots}/{snapshot.remainingSaleSlots}
-                      </td>
-                      <td className="py-2">
-                        <div className="flex gap-2">
-                          <button
-                            className="btn-primary"
-                            disabled={saving === snapshot.brokerId}
-                            onClick={() => void saveSlotLimit(snapshot.brokerId)}
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="btn-secondary"
-                            onClick={() => setActiveId(snapshot.brokerId || snapshot.email || null)}
-                          >
-                            View
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       <DetailSidebar

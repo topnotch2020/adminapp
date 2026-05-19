@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AdminApp",
-  description: "Secure admin panel",
+  title: "BrokerLoop Admin",
+  description: "BrokerLoop platform administration console",
 };
 
 export default function RootLayout({

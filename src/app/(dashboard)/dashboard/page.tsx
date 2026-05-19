@@ -1,203 +1,161 @@
 "use client";
 
-import { brokersApi } from "@/lib/api/modules/brokers";
-import { notificationsApi } from "@/lib/api/modules/notifications";
-import { propertiesApi } from "@/lib/api/modules/properties";
-import { subscriptionsApi } from "@/lib/api/modules/subscriptions";
-import { useToast } from "@/components/providers/toast-provider";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { MiniBarChart } from "@/components/ui/mini-bar-chart";
+import { useMetrics } from "@/components/providers/metrics-provider";
 import { routePaths } from "@/lib/config";
-import { AlertTriangle, Bell, Building2, CheckCircle2, Home, RefreshCcw, Shield } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  Building2,
+  CheckCircle2,
+  Home,
+  Mail,
+  RefreshCcw,
+  Shield,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
-
-type DashboardMetrics = {
-  totalProperties: number;
-  brokersTotal: number;
-  adminsTotal: number;
-  pendingProperties: number;
-  unreadNotifications: number;
-  rentCount: number;
-  saleCount: number;
-  subscriptionsTracked: number;
-};
+import { useMemo } from "react";
 
 export default function DashboardPage() {
-  const { showToast } = useToast();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastSync, setLastSync] = useState<string | null>(null);
-
-  const load = useCallback(async (showRefreshToast = false) => {
-    setLoading(true);
-    try {
-      const [properties, unread, metrics, subscriptions] = await Promise.all([
-        propertiesApi.list({ limit: 200 }),
-        notificationsApi.unreadCount(),
-        brokersApi.dashboardMetrics(),
-        subscriptionsApi.list(),
-      ]);
-      const allProperties = properties.items ?? [];
-      const rentCount = allProperties.filter((property) => property.listingType === "RENT").length;
-      const saleCount = allProperties.filter((property) => property.listingType === "SALE").length;
-      setMetrics({
-        totalProperties: metrics.propertiesTotal ?? allProperties.length,
-        brokersTotal: metrics.brokersTotal ?? 0,
-        adminsTotal: metrics.adminsTotal ?? 0,
-        pendingProperties: metrics.pendingProperties ?? 0,
-        unreadNotifications: unread,
-        rentCount,
-        saleCount,
-        subscriptionsTracked: subscriptions.length,
-      });
-      setLastSync(new Date().toLocaleTimeString());
-      if (showRefreshToast) {
-        showToast({ type: "success", title: "Dashboard refreshed" });
-      }
-    } catch {
-      showToast({ type: "error", title: "Failed to load dashboard metrics" });
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+  const { metrics, loading, refresh } = useMetrics();
 
   const healthScore = useMemo(() => {
     if (!metrics) return 0;
-    const moderationPenalty = Math.min(metrics.pendingProperties * 2, 40);
-    const alertPenalty = Math.min(metrics.unreadNotifications, 30);
+    const moderationPenalty = Math.min((metrics.pendingProperties ?? 0) * 2, 40);
+    const alertPenalty = Math.min(metrics.notificationsUnread ?? 0, 30);
     return Math.max(100 - moderationPenalty - alertPenalty, 0);
   }, [metrics]);
 
+  const formatStatusLabel = (status: string | null | undefined) =>
+    (status ?? "Unknown").replace(/_/g, " ");
+
+  const propertyBreakdown = (metrics?.propertyStatusBreakdown ?? []).map((row) => ({
+    label: formatStatusLabel(row.status),
+    value: row.count,
+  }));
+
+  const brokerBreakdown = (metrics?.brokerStatusBreakdown ?? []).map((row) => ({
+    label: formatStatusLabel(row.status),
+    value: row.count,
+  }));
+
   return (
     <section className="space-y-6">
-      <div className="panel p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.16em] muted">Control Center</p>
-            <h2 className="panel-title mt-2">Platform Overview</h2>
-            <p className="mt-2 text-sm muted">
-              Monitor broker growth, listing moderation, and integrations from one place.
-            </p>
-          </div>
-          <button className="btn-secondary inline-flex items-center gap-2" onClick={() => void load(true)}>
+      <PageHeader
+        eyebrow="Control Center"
+        title="Platform Overview"
+        description="Monitor broker growth, listing moderation, subscriptions, and platform health in real time."
+        actions={
+          <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => void refresh()}>
             <RefreshCcw size={14} />
             Refresh
           </button>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="rounded-xl px-3 py-2" style={{ background: "var(--surface-2)" }}>
-            <p className="text-xs muted">System Health Score</p>
-            <p className="text-xl font-semibold">{healthScore}/100</p>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <article className="panel-elevated p-5 md:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-wider muted">System health</p>
+          <div className="mt-3 flex items-end gap-4">
+            <p className="text-5xl font-bold" style={{ color: healthScore >= 70 ? "var(--success)" : "var(--warning)" }}>
+              {healthScore}
+            </p>
+            <p className="pb-2 text-sm muted">/ 100 — based on moderation queue and unread alerts</p>
           </div>
-          <div className="rounded-xl px-3 py-2" style={{ background: "var(--surface-2)" }}>
-            <p className="text-xs muted">Last Sync</p>
-            <p className="text-xl font-semibold">{lastSync || "-"}</p>
+          <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${healthScore}%`,
+                background: "linear-gradient(90deg, var(--primary), var(--accent))",
+              }}
+            />
           </div>
-        </div>
+        </article>
+        <StatCard
+          title="New this week"
+          value={(metrics?.brokersLast7Days ?? 0) + (metrics?.propertiesLast7Days ?? 0)}
+          hint={`${metrics?.brokersLast7Days ?? 0} brokers · ${metrics?.propertiesLast7Days ?? 0} listings`}
+          icon={<TrendingUp size={18} />}
+          accent="success"
+        />
       </div>
+
       {loading ? (
-        <div className="panel p-5 text-sm text-slate-500">Loading metrics...</div>
+        <div className="panel p-5 text-sm muted">Loading metrics...</div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Metric title="Total Properties" value={metrics?.totalProperties ?? 0} icon={<Home size={16} />} />
-            <Metric title="Brokers" value={metrics?.brokersTotal ?? 0} icon={<Building2 size={16} />} />
-            <Metric title="Admins" value={metrics?.adminsTotal ?? 0} icon={<Shield size={16} />} />
-            <Metric title="Unread Alerts" value={metrics?.unreadNotifications ?? 0} icon={<Bell size={16} />} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard title="Total Listings" value={metrics?.propertiesTotal ?? 0} icon={<Home size={18} />} />
+            <StatCard title="Brokers" value={metrics?.brokersTotal ?? 0} icon={<Building2 size={18} />} accent="primary" />
+            <StatCard title="Pending Review" value={metrics?.pendingProperties ?? 0} icon={<AlertTriangle size={18} />} accent="warning" />
+            <StatCard title="Unread Alerts" value={metrics?.notificationsUnread ?? 0} icon={<Bell size={18} />} accent="danger" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard title="Verified Brokers" value={metrics?.verifiedBrokers ?? 0} icon={<Users size={18} />} accent="success" />
+            <StatCard title="Verified Listings" value={metrics?.verifiedProperties ?? 0} icon={<CheckCircle2 size={18} />} accent="success" />
+            <StatCard title="Rent / Sale" value={`${metrics?.rentProperties ?? 0} / ${metrics?.saleProperties ?? 0}`} icon={<Home size={18} />} />
+            <StatCard title="Waitlist" value={metrics?.waitlistTotal ?? 0} icon={<Mail size={18} />} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="panel p-5 lg:col-span-2">
-              <h3 className="text-sm font-semibold uppercase tracking-wide muted">
-                Listing Distribution
-              </h3>
-              <div className="mt-5 space-y-4">
-                <Progress label="Rent" value={metrics?.rentCount ?? 0} total={metrics?.totalProperties ?? 1} />
-                <Progress label="Sale" value={metrics?.saleCount ?? 0} total={metrics?.totalProperties ?? 1} />
-                <Progress label="Pending Review" value={metrics?.pendingProperties ?? 0} total={metrics?.totalProperties ?? 1} />
+            <article className="panel p-5 lg:col-span-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide muted">Listing status breakdown</h3>
+              <div className="mt-4">
+                <MiniBarChart data={propertyBreakdown} labelKey="label" valueKey="value" />
               </div>
-            </div>
+            </article>
 
-            <div className="panel p-5">
-              <h3 className="text-sm font-semibold uppercase tracking-wide muted">
-                Action Queue
-              </h3>
+            <article className="panel p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wide muted">Action queue</h3>
               <ul className="mt-4 space-y-3 text-sm">
                 <li className="flex items-start gap-2">
-                  <AlertTriangle size={15} className="mt-0.5 text-amber-500" />
-                  <span>{metrics?.pendingProperties ?? 0} properties need moderation.</span>
+                  <AlertTriangle size={15} className="mt-0.5" style={{ color: "var(--warning)" }} />
+                  <span>{metrics?.pendingProperties ?? 0} properties awaiting moderation</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Bell size={15} className="mt-0.5 text-cyan-500" />
-                  <span>{metrics?.unreadNotifications ?? 0} unread notifications in queue.</span>
+                  <Users size={15} className="mt-0.5" style={{ color: "var(--primary)" }} />
+                  <span>{metrics?.pendingBrokers ?? 0} brokers pending verification</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 size={15} className="mt-0.5 text-emerald-500" />
-                  <span>{metrics?.subscriptionsTracked ?? 0} subscription snapshots tracked.</span>
+                  <Bell size={15} className="mt-0.5" style={{ color: "var(--danger)" }} />
+                  <span>{metrics?.notificationsUnread ?? 0} unread notifications</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Shield size={15} className="mt-0.5 muted" />
+                  <span>{metrics?.adminsTotal ?? 0} admin accounts active</span>
                 </li>
               </ul>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <Link className="btn-secondary !py-1 text-center" href={routePaths.properties}>
-                  Open Moderation
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <Link className="btn-secondary !py-1.5 text-center text-xs" href={routePaths.properties}>
+                  Moderate
                 </Link>
-                <Link className="btn-secondary !py-1 text-center" href={routePaths.notifications}>
-                  Open Alerts
+                <Link className="btn-secondary !py-1.5 text-center text-xs" href={routePaths.brokers}>
+                  Brokers
                 </Link>
-                <Link className="btn-secondary !py-1 text-center" href={routePaths.operations}>
-                  Open Operations
+                <Link className="btn-secondary !py-1.5 text-center text-xs" href={routePaths.operations}>
+                  Operations
                 </Link>
-                <Link className="btn-secondary !py-1 text-center" href={routePaths.audit}>
-                  Open Audit
+                <Link className="btn-primary !py-1.5 text-center text-xs" href={routePaths.analytics}>
+                  Analytics
                 </Link>
               </div>
-            </div>
+            </article>
           </div>
+
+          <article className="panel p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide muted">Broker status breakdown</h3>
+            <div className="mt-4 max-w-xl">
+              <MiniBarChart data={brokerBreakdown} labelKey="label" valueKey="value" color="var(--accent)" />
+            </div>
+          </article>
         </>
       )}
     </section>
-  );
-}
-
-function Metric({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: string | number;
-  icon: ReactNode;
-}) {
-  return (
-    <div className="panel p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm muted">{title}</p>
-        <span className="rounded-lg p-2" style={{ background: "var(--surface-2)" }}>
-          {icon}
-        </span>
-      </div>
-      <p className="mt-2 text-2xl font-semibold">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function Progress({ label, value, total }: { label: string; value: number; total: number }) {
-  const percent = Math.min(Math.round((value / Math.max(total, 1)) * 100), 100);
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span>{label}</span>
-        <span className="muted">{value} ({percent}%)</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
-        <div className="h-full rounded-full" style={{ width: `${percent}%`, background: "var(--primary)" }} />
-      </div>
-    </div>
   );
 }

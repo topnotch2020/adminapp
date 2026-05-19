@@ -2,6 +2,7 @@
 
 import { propertiesApi } from "@/lib/api/modules/properties";
 import { useToast } from "@/components/providers/toast-provider";
+import { AreaAutocomplete } from "@/components/ui/area-autocomplete";
 import { DetailSidebar } from "@/components/ui/detail-sidebar";
 import { Property } from "@/types/domain";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -14,6 +15,7 @@ export default function PropertiesPage() {
   const [listingType, setListingType] = useState<"ALL" | "RENT" | "SALE">("ALL");
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [areaFilter, setAreaFilter] = useState("");
   const [brokerId, setBrokerId] = useState("");
   const [view, setView] = useState<"cards" | "table">("cards");
   const [page, setPage] = useState(1);
@@ -27,7 +29,7 @@ export default function PropertiesPage() {
         limit: 100,
         listingType: listingType === "ALL" ? undefined : listingType,
         status: status === "ALL" ? undefined : status,
-        search: search || undefined,
+        search: [search, areaFilter].filter(Boolean).join(" ").trim() || undefined,
         brokerId: brokerId || undefined,
       });
       setProperties(response.items ?? []);
@@ -37,7 +39,7 @@ export default function PropertiesPage() {
     } finally {
       setLoading(false);
     }
-  }, [brokerId, listingType, search, showToast, status]);
+  }, [areaFilter, brokerId, listingType, search, showToast, status]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -109,12 +111,17 @@ export default function PropertiesPage() {
         </div>
       </div>
       <div className="panel p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
           <input
             className="input md:col-span-2"
             placeholder="Search by project/area/city"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+          />
+          <AreaAutocomplete
+            value={areaFilter}
+            onChange={setAreaFilter}
+            placeholder="Filter by area (Pune)"
           />
           <input
             className="input"
@@ -152,6 +159,7 @@ export default function PropertiesPage() {
               className="btn-secondary"
               onClick={() => {
                 setSearch("");
+                setAreaFilter("");
                 setStatus("ALL");
                 setListingType("ALL");
                 setBrokerId("");

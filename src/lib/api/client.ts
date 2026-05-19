@@ -18,10 +18,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
       authStorage.clearToken();
       if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-        window.location.href = "/login";
+        const reason = status === 403 ? "?error=admin_required" : "";
+        window.location.href = `/login${reason}`;
       }
     }
     return Promise.reject(error);

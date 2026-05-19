@@ -81,12 +81,44 @@ export type Notification = {
   createdAt: string;
 };
 
+export type StatusCount = {
+  status: string;
+  count: number;
+};
+
 export type DashboardMetrics = {
   brokersTotal?: number;
   adminsTotal?: number;
   propertiesTotal?: number;
   pendingProperties?: number;
   notificationsUnread?: number;
+  pendingBrokers?: number;
+  verifiedBrokers?: number;
+  suspendedBrokers?: number;
+  verifiedProperties?: number;
+  rentProperties?: number;
+  saleProperties?: number;
+  waitlistTotal?: number;
+  brokersLast7Days?: number;
+  propertiesLast7Days?: number;
+  propertyStatusBreakdown?: StatusCount[];
+  brokerStatusBreakdown?: StatusCount[];
+};
+
+export type AnalyticsOverview = {
+  rangeDays: number;
+  dailyTrend: { date: string; brokers: number; properties: number }[];
+  topAreas: { area: string; count: number }[];
+  listingMix: { rent: number; sale: number; total: number };
+};
+
+export type WaitlistEntry = {
+  _id: string;
+  email: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type Pagination = {
@@ -102,5 +134,6 @@ export type AuditLog = {
   message: string;
   actor?: string;
   target?: string;
+  unread?: boolean;
   createdAt: string;
 };

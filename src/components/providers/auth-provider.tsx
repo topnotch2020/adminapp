@@ -1,6 +1,7 @@
 "use client";
 
 import { authApi } from "@/lib/api/modules/auth";
+import { AdminAccessError } from "@/lib/admin-auth";
 import { authStorage } from "@/lib/auth-storage";
 import type { AuthUser } from "@/types/domain";
 import { usePathname, useRouter } from "next/navigation";
@@ -56,8 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: Boolean(user),
       login: async (token: string) => {
         authStorage.setToken(token);
-        const me = await authApi.me();
-        setUser(me);
+        try {
+          const me = await authApi.me();
+          setUser(me);
+        } catch (error) {
+          authStorage.clearToken();
+          setUser(null);
+          if (error instanceof AdminAccessError) {
+            throw error;
+          }
+          throw error;
+        }
       },
       logout: async () => {
         try {

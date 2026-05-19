@@ -3,8 +3,15 @@
 import { brokersApi } from "@/lib/api/modules/brokers";
 import { marketingApi } from "@/lib/api/modules/marketing";
 import { systemApi } from "@/lib/api/modules/system";
+import { useToast } from "@/components/providers/toast-provider";
+import { getApiErrorMessage } from "@/lib/admin-auth";
 import { FormEvent, useEffect, useState } from "react";
 import type { AuditLog } from "@/types/domain";
+
+type AddressAreaGroup = {
+  region: string;
+  areas: string[];
+};
 
 type PropertyMeta = {
   propertyTypes?: string[];
@@ -13,9 +20,14 @@ type PropertyMeta = {
   listingTypes?: string[];
   propertyStatuses?: string[];
   brokerRoles?: string[];
+  brokerStatuses?: string[];
+  address?: {
+    area?: AddressAreaGroup[];
+  };
 };
 
 export default function SystemPage() {
+  const { showToast } = useToast();
   const [meta, setMeta] = useState<PropertyMeta>({});
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
@@ -31,6 +43,12 @@ export default function SystemPage() {
         ]);
         setMeta(result || {});
         setAuditLogs(audit.items);
+      } catch (error) {
+        showToast({
+          type: "error",
+          title: "Unable to load system metadata",
+          description: getApiErrorMessage(error, "Check API connectivity and admin permissions."),
+        });
       } finally {
         setLoading(false);
       }
@@ -89,6 +107,31 @@ export default function SystemPage() {
             <p>Listing Types: {(meta.listingTypes || []).join(", ") || "-"}</p>
             <p>Property Statuses: {(meta.propertyStatuses || []).join(", ") || "-"}</p>
             <p>Broker Roles: {(meta.brokerRoles || []).join(", ") || "-"}</p>
+            <p>Broker Statuses: {(meta.brokerStatuses || []).join(", ") || "-"}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="panel p-5">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Pune Address Areas (system address.area)
+        </h3>
+        {loading ? (
+          <p className="mt-3 text-sm text-slate-500">Loading areas...</p>
+        ) : (meta.address?.area || []).length === 0 ? (
+          <p className="mt-3 text-sm muted">No default areas configured.</p>
+        ) : (
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {(meta.address?.area || []).map((group) => (
+              <div
+                key={group.region}
+                className="rounded-xl border px-3 py-3"
+                style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+              >
+                <p className="text-sm font-semibold">{group.region}</p>
+                <p className="mt-2 text-sm muted">{group.areas.join(", ")}</p>
+              </div>
+            ))}
           </div>
         )}
       </div>

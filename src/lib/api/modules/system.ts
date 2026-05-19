@@ -2,6 +2,11 @@ import { api } from "@/lib/api/client";
 import { unwrapEnvelope } from "@/lib/api/contracts";
 import type { AuditLog, Pagination } from "@/types/domain";
 
+type AddressAreaGroup = {
+  region: string;
+  areas: string[];
+};
+
 type PropertyMeta = {
   propertyTypes?: string[];
   floorLevels?: string[];
@@ -10,6 +15,9 @@ type PropertyMeta = {
   propertyStatuses?: string[];
   brokerRoles?: string[];
   brokerStatuses?: string[];
+  address?: {
+    area?: AddressAreaGroup[];
+  };
 };
 
 export const systemApi = {

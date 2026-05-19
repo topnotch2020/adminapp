@@ -4,6 +4,8 @@ import { brokersApi } from "@/lib/api/modules/brokers";
 import { notificationsApi } from "@/lib/api/modules/notifications";
 import { propertiesApi } from "@/lib/api/modules/properties";
 import { subscriptionsApi } from "@/lib/api/modules/subscriptions";
+import { useToast } from "@/components/providers/toast-provider";
+import { getApiErrorMessage } from "@/lib/admin-auth";
 import { useCallback, useEffect, useState } from "react";
 import type { Broker, Notification, Property } from "@/types/domain";
 
@@ -19,6 +21,7 @@ type OpsSnapshot = {
 };
 
 export default function OperationsPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState<OpsSnapshot>({
     pendingBrokers: [],
@@ -49,10 +52,16 @@ export default function OperationsPage() {
             totalSlots: item.totalSlots,
           })),
       });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Unable to load operations queues",
+        description: getApiErrorMessage(error, "Check API connectivity and admin permissions."),
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

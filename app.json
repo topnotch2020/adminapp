@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "223ff679-98b1-4377-92c5-7cb82be1f80b"
+      }
+    },
+    "android": {
+      "package": "com.topnotchh2020.adminapp"
+    }
+  }
+}

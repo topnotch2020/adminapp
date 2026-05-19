@@ -1,10 +1,13 @@
 "use client";
 
 import { systemApi } from "@/lib/api/modules/system";
+import { useToast } from "@/components/providers/toast-provider";
+import { getApiErrorMessage } from "@/lib/admin-auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuditLog } from "@/types/domain";
 
 export default function AuditPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<AuditLog[]>([]);
   const [skip, setSkip] = useState(0);
@@ -18,10 +21,16 @@ export default function AuditPage() {
       const result = await systemApi.auditLogs({ limit, skip: nextSkip });
       setItems(result.items);
       setHasMore(Boolean(result.pagination?.hasMore));
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Unable to load audit logs",
+        description: getApiErrorMessage(error, "Check API connectivity and admin permissions."),
+      });
     } finally {
       setLoading(false);
     }
-  }, [skip]);
+  }, [showToast, skip]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
