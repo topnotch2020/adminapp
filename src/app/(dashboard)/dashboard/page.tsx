@@ -1,27 +1,54 @@
 "use client";
 
-import { PageHeader } from "@/components/ui/page-header";
-import { StatCard } from "@/components/ui/stat-card";
+import { ActivityFeed } from "@/components/ui/activity-feed";
+import { MetricRing } from "@/components/ui/metric-ring";
 import { MiniBarChart } from "@/components/ui/mini-bar-chart";
+import { PageHeader } from "@/components/ui/page-header";
+import { QuickActionCard } from "@/components/ui/quick-action-card";
+import { StatCard } from "@/components/ui/stat-card";
+import { PanelSkeleton, StatCardSkeleton } from "@/components/ui/skeleton";
+import { WelcomeBanner } from "@/components/ui/welcome-banner";
 import { useMetrics } from "@/components/providers/metrics-provider";
 import { routePaths } from "@/lib/config";
+import { systemApi } from "@/lib/api/modules/system";
+import type { AuditLog } from "@/types/domain";
 import {
   AlertTriangle,
+  BarChart3,
   Bell,
   Building2,
   CheckCircle2,
+  CreditCard,
   Home,
   Mail,
+  Radar,
   RefreshCcw,
   Shield,
-  TrendingUp,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function DashboardPage() {
   const { metrics, loading, refresh } = useMetrics();
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+
+  const loadAudit = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const result = await systemApi.auditLogs({ limit: 6, skip: 0 });
+      setAuditLogs(result.items);
+    } catch {
+      setAuditLogs([]);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAudit();
+  }, [loadAudit]);
 
   const healthScore = useMemo(() => {
     if (!metrics) return 0;
@@ -43,52 +70,141 @@ export default function DashboardPage() {
     value: row.count,
   }));
 
+  const verificationRate = useMemo(() => {
+    const total = metrics?.propertiesTotal ?? 0;
+    if (!total) return 0;
+    return Math.round(((metrics?.verifiedProperties ?? 0) / total) * 100);
+  }, [metrics]);
+
   return (
     <section className="space-y-6">
+      <WelcomeBanner />
+
       <PageHeader
         eyebrow="Control Center"
         title="Platform Overview"
         description="Monitor broker growth, listing moderation, subscriptions, and platform health in real time."
         actions={
-          <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => void refresh()}>
+          <button
+            type="button"
+            className="btn-secondary inline-flex items-center gap-2"
+            onClick={() => {
+              void refresh();
+              void loadAudit();
+            }}
+          >
             <RefreshCcw size={14} />
             Refresh
           </button>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <article className="panel-elevated p-5 md:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-wider muted">System health</p>
-          <div className="mt-3 flex items-end gap-4">
-            <p className="text-5xl font-bold" style={{ color: healthScore >= 70 ? "var(--success)" : "var(--warning)" }}>
-              {healthScore}
-            </p>
-            <p className="pb-2 text-sm muted">/ 100 — based on moderation queue and unread alerts</p>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${healthScore}%`,
-                background: "linear-gradient(90deg, var(--primary), var(--accent))",
-              }}
-            />
-          </div>
-        </article>
-        <StatCard
-          title="New this week"
-          value={(metrics?.brokersLast7Days ?? 0) + (metrics?.propertiesLast7Days ?? 0)}
-          hint={`${metrics?.brokersLast7Days ?? 0} brokers · ${metrics?.propertiesLast7Days ?? 0} listings`}
-          icon={<TrendingUp size={18} />}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <QuickActionCard
+          href={routePaths.operations}
+          label="Operations"
+          description="Review priority queues"
+          icon={Radar}
+          badge={(metrics?.pendingBrokers ?? 0) + (metrics?.pendingProperties ?? 0)}
+          accent="warning"
+        />
+        <QuickActionCard
+          href={routePaths.properties}
+          label="Properties"
+          description="Moderate listings"
+          icon={Home}
+          badge={metrics?.pendingProperties}
+          accent="warning"
+        />
+        <QuickActionCard
+          href={routePaths.brokers}
+          label="Brokers"
+          description="Verify accounts"
+          icon={Building2}
+          badge={metrics?.pendingBrokers}
+        />
+        <QuickActionCard
+          href={routePaths.notifications}
+          label="Alerts"
+          description="Unread notifications"
+          icon={Bell}
+          badge={metrics?.notificationsUnread}
+          accent="danger"
+        />
+        <QuickActionCard
+          href={routePaths.analytics}
+          label="Analytics"
+          description="Growth & trends"
+          icon={BarChart3}
+        />
+        <QuickActionCard
+          href={routePaths.subscriptions}
+          label="Subscriptions"
+          description="Plans & slots"
+          icon={CreditCard}
           accent="success"
         />
       </div>
 
       {loading ? (
-        <div className="panel p-5 text-sm muted">Loading metrics...</div>
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <PanelSkeleton lines={2} />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+        </>
       ) : (
         <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <article className="panel-elevated flex flex-col items-center justify-center p-6 md:col-span-1">
+              <MetricRing
+                value={healthScore}
+                label="Health score"
+                sublabel="Moderation + alerts"
+              />
+            </article>
+            <article className="panel-elevated p-5 lg:col-span-2">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider muted">
+                    Platform pulse
+                  </p>
+                  <p className="mt-2 text-2xl font-bold">
+                    {verificationRate}% listings verified
+                  </p>
+                  <p className="mt-1 text-sm muted">
+                    {metrics?.verifiedBrokers ?? 0} verified brokers ·{" "}
+                    {metrics?.waitlistTotal ?? 0} on waitlist
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium uppercase tracking-wider muted">New this week</p>
+                  <p className="mt-1 text-3xl font-bold" style={{ color: "var(--success)" }}>
+                    {(metrics?.brokersLast7Days ?? 0) + (metrics?.propertiesLast7Days ?? 0)}
+                  </p>
+                  <p className="mt-1 text-xs muted">
+                    {metrics?.brokersLast7Days ?? 0} brokers · {metrics?.propertiesLast7Days ?? 0} listings
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 h-2 overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${healthScore}%`,
+                    background: "linear-gradient(90deg, var(--primary), var(--accent))",
+                  }}
+                />
+              </div>
+            </article>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard title="Total Listings" value={metrics?.propertiesTotal ?? 0} icon={<Home size={18} />} />
             <StatCard title="Brokers" value={metrics?.brokersTotal ?? 0} icon={<Building2 size={18} />} accent="primary" />
@@ -105,7 +221,9 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <article className="panel p-5 lg:col-span-2">
-              <h3 className="text-sm font-semibold uppercase tracking-wide muted">Listing status breakdown</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wide muted">
+                Listing status breakdown
+              </h3>
               <div className="mt-4">
                 <MiniBarChart data={propertyBreakdown} labelKey="label" valueKey="value" />
               </div>
@@ -148,12 +266,26 @@ export default function DashboardPage() {
             </article>
           </div>
 
-          <article className="panel p-5">
-            <h3 className="text-sm font-semibold uppercase tracking-wide muted">Broker status breakdown</h3>
-            <div className="mt-4 max-w-xl">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <article className="panel p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-wide muted">
+                  Broker status breakdown
+                </h3>
+              </div>
               <MiniBarChart data={brokerBreakdown} labelKey="label" valueKey="value" color="var(--accent)" />
-            </div>
-          </article>
+            </article>
+
+            <article className="panel p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-wide muted">Recent activity</h3>
+                <Link href={routePaths.audit} className="text-xs font-semibold" style={{ color: "var(--primary)" }}>
+                  View all
+                </Link>
+              </div>
+              <ActivityFeed items={auditLogs} loading={auditLoading} />
+            </article>
+          </div>
         </>
       )}
     </section>

@@ -39,8 +39,15 @@ export default function DashboardLayout({
 
   if (loading || !isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="panel px-6 py-4 text-sm muted">Loading admin console...</div>
+      <div className="loading-screen">
+        <div className="panel-elevated loading-screen-card">
+          <div
+            className="h-10 w-10 rounded-xl"
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--accent))" }}
+          />
+          <p className="text-sm font-semibold">BrokerLoop Admin</p>
+          <p className="text-xs muted">Loading console...</p>
+        </div>
       </div>
     );
   }

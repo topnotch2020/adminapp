@@ -113,15 +113,9 @@ export function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
-                    style={
-                      active
-                        ? {
-                            background: "var(--sidebar-active)",
-                            color: "var(--primary)",
-                          }
-                        : undefined
-                    }
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                      active ? "nav-link-active" : ""
+                    }`}
                   >
                     <Icon size={17} className={active ? "" : "muted group-hover:text-[var(--foreground)]"} />
                     <span className="flex-1">{item.label}</span>
@@ -136,6 +130,18 @@ export function Sidebar() {
             </nav>
           </div>
         ))}
+      </div>
+
+      <div className="mx-4 mb-3 rounded-xl border px-3 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+        <div className="flex items-center gap-2">
+          <span className="status-dot" aria-hidden />
+          <p className="text-xs font-semibold">Platform status</p>
+        </div>
+        <p className="mt-1 text-[11px] muted">
+          {(metrics?.pendingProperties ?? 0) + (metrics?.pendingBrokers ?? 0) > 0
+            ? `${(metrics?.pendingProperties ?? 0) + (metrics?.pendingBrokers ?? 0)} items in review queues`
+            : "All moderation queues clear"}
+        </p>
       </div>
 
       <footer className="border-t p-4" style={{ borderColor: "var(--border)" }}>

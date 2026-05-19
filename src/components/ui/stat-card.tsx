@@ -23,7 +23,7 @@ export function StatCard({
   };
 
   return (
-    <article className="panel-elevated animate-fade-in p-5">
+    <article className="panel-elevated stat-card animate-fade-in p-5 transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider muted">{title}</p>

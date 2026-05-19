@@ -43,9 +43,16 @@ export default function LoginPage() {
       if (err instanceof AdminAccessError) {
         setError(err.message);
       } else if (err instanceof AxiosError) {
-        setError(
-          (err.response?.data as { message?: string } | undefined)?.message || "Invalid credentials"
-        );
+        if (!err.response) {
+          setError(
+            "Cannot reach the API. Check that the backend is deployed and NEXT_PUBLIC_API_BASE_URL is set on Vercel."
+          );
+        } else {
+          setError(
+            (err.response?.data as { message?: string } | undefined)?.message ||
+              "Invalid credentials"
+          );
+        }
       } else {
         setError("Invalid credentials");
       }
