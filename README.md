@@ -1,3 +1,48 @@
+# AdminApp
+
+Modern Next.js admin panel for BrokerLoop with a stable API contract layer.
+
+## Features
+
+- Login-only authentication flow (no register screen)
+- Protected dashboard routes with sidebar navigation
+- API modules for:
+  - Authentication
+  - Brokers
+  - Properties
+  - Notifications
+  - Subscriptions (stable wrapper, derived from current APIs)
+  - System/Metadata + Marketing waitlist integration
+
+## Setup
+
+1. Copy env:
+
+```bash
+cp .env.example .env.local
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Run dev server:
+
+```bash
+npm run dev
+```
+
+## API Contract Stability
+
+All network calls are centralized in:
+
+- `src/lib/api/client.ts`
+- `src/lib/api/contracts.ts`
+- `src/lib/api/modules/*`
+
+If backend payload format changes, update contract unwrapping/modules only; UI pages stay stable.
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -34,3 +79,4 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# adminapp
