@@ -7,7 +7,7 @@ export function PageHeader({
   actions,
 }: {
   eyebrow?: string;
-  title: string;
+  title?: string;
   description?: string;
   actions?: ReactNode;
 }) {
@@ -17,8 +17,10 @@ export function PageHeader({
         {eyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-[0.2em] muted">{eyebrow}</p>
         ) : null}
-        <h2 className="panel-title mt-1">{title}</h2>
-        {description ? <p className="mt-2 max-w-2xl text-sm muted">{description}</p> : null}
+        {title ? <h2 className="panel-title mt-1">{title}</h2> : null}
+        {description ? (
+          <p className={`max-w-2xl text-sm muted ${title || eyebrow ? "mt-2" : ""}`}>{description}</p>
+        ) : null}
       </section>
       {actions ? <aside className="flex flex-wrap items-center gap-2">{actions}</aside> : null}
     </header>

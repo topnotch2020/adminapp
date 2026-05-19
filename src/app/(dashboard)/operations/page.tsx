@@ -124,7 +124,6 @@ export default function OperationsPage() {
     <section className="space-y-6">
       <PageHeader
         eyebrow="Daily workflow"
-        title="Operations Center"
         description="High-priority queues for broker verification, listing moderation, alerts, and subscription capacity."
         actions={
           <button

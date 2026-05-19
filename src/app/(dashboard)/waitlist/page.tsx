@@ -58,7 +58,6 @@ export default function WaitlistPage() {
     <section className="space-y-6">
       <PageHeader
         eyebrow="Growth"
-        title="Waitlist"
         description="Leads and early-access signups from the website and admin integrations."
         actions={
           <>

@@ -48,7 +48,6 @@ export default function AnalyticsPage() {
     <section className="space-y-6">
       <PageHeader
         eyebrow="Insights"
-        title="Analytics"
         description="Growth trends, listing mix, and geographic distribution across the platform."
         actions={
           <>

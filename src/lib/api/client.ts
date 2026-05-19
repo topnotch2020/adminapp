@@ -1,5 +1,5 @@
 import axios from "axios";
-import { appConfig, resolveApiBaseUrlAtRuntime } from "@/lib/config";
+import { appConfig } from "@/lib/config";
 import { authStorage } from "@/lib/auth-storage";
 
 export const api = axios.create({
@@ -8,15 +8,11 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  config.baseURL = resolveApiBaseUrlAtRuntime();
-
   const token = authStorage.getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-
-  const base = config.baseURL ?? "";
-  if (base.includes("ngrok")) {
+  if (appConfig.apiBaseUrl.includes("ngrok")) {
     config.headers["ngrok-skip-browser-warning"] = "true";
   }
   return config;

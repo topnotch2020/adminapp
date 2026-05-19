@@ -82,7 +82,6 @@ export default function DashboardPage() {
 
       <PageHeader
         eyebrow="Control Center"
-        title="Platform Overview"
         description="Monitor broker growth, listing moderation, subscriptions, and platform health in real time."
         actions={
           <button
