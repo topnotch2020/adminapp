@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+:root,
+.light {
+  --background: #f4f7fb;
+  --foreground: #0b1220;
+  --surface: #ffffff;
+  --surface-2: #e9eef8;
+  --border: #dbe4f2;
+  --muted: #64748b;
+  --primary: #0f766e;
 }
 
 @theme inline {
@@ -12,15 +18,79 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #060d1b;
+  --foreground: #e6edf8;
+  --surface: #0d1728;
+  --surface-2: #15243d;
+  --border: #1f334f;
+  --muted: #9db0cc;
+  --primary: #22d3ee;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(34, 211, 238, 0.08), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(15, 118, 110, 0.08), transparent 28%);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  @apply rounded-2xl shadow-sm backdrop-blur-sm;
+}
+
+.panel-title {
+  @apply text-lg font-semibold;
+}
+
+.input {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  @apply rounded-xl px-3 py-2 outline-none ring-cyan-300 focus:ring-2;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  @apply rounded-xl px-3 py-2 text-sm font-medium transition-all hover:opacity-90 hover:shadow-lg;
+}
+
+.btn-secondary {
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  @apply rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-slate-200/30 dark:hover:bg-slate-700/30;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.toast-item {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  @apply pointer-events-auto rounded-xl px-4 py-3 shadow-xl;
+}
+
+.toast-success {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.toast-error {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.toast-info {
+  border-color: rgba(34, 211, 238, 0.35);
 }
