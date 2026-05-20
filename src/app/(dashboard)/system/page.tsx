@@ -1,5 +1,6 @@
 "use client";
 
+import { AddressAreasManager } from "@/components/system/address-areas-manager";
 import { brokersApi } from "@/lib/api/modules/brokers";
 import { marketingApi } from "@/lib/api/modules/marketing";
 import { systemApi } from "@/lib/api/modules/system";
@@ -111,29 +112,7 @@ export default function SystemPage() {
         )}
       </div>
 
-      <div className="panel p-5">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Pune Address Areas (system address.area)
-        </h3>
-        {loading ? (
-          <p className="mt-3 text-sm text-slate-500">Loading areas...</p>
-        ) : (meta.address?.area || []).length === 0 ? (
-          <p className="mt-3 text-sm muted">No default areas configured.</p>
-        ) : (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {(meta.address?.area || []).map((group) => (
-              <div
-                key={group.region}
-                className="rounded-xl border px-3 py-3"
-                style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
-              >
-                <p className="text-sm font-semibold">{group.region}</p>
-                <p className="mt-2 text-sm muted">{group.areas.join(", ")}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <AddressAreasManager />
 
       <div className="panel p-5">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
