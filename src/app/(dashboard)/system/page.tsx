@@ -1,6 +1,7 @@
 "use client";
 
 import { AddressAreasManager } from "@/components/system/address-areas-manager";
+import { AppContentManager } from "@/components/system/app-content-manager";
 import { brokersApi } from "@/lib/api/modules/brokers";
 import { marketingApi } from "@/lib/api/modules/marketing";
 import { systemApi } from "@/lib/api/modules/system";
@@ -111,6 +112,8 @@ export default function SystemPage() {
           </div>
         )}
       </div>
+
+      <AppContentManager />
 
       <AddressAreasManager />
 

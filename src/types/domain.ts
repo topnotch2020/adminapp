@@ -58,6 +58,7 @@ export type Property = {
   amenities?: string[];
   availableFrom?: string;
   facing?: string;
+  expiresAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };
