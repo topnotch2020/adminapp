@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/client";
-import { unwrapEnvelope } from "@/lib/api/contracts";
+import { unwrapEnvelope, ApiEnvelope } from "@/lib/api/contracts";
 
 export type PrivacyPolicySection = {
   title: string;
@@ -26,7 +26,9 @@ export type AppContentData = {
 };
 
 function unwrapContent(data: unknown): AppContentData {
-  const unwrapped = unwrapEnvelope<{ data?: AppContentData } | AppContentData>(data);
+  const unwrapped = unwrapEnvelope<{ data?: AppContentData } | AppContentData>(
+    data as ApiEnvelope<{ data?: AppContentData } | AppContentData>
+  );
   const payload =
     unwrapped && typeof unwrapped === "object" && "data" in unwrapped
       ? (unwrapped as { data?: AppContentData }).data
