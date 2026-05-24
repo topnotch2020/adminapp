@@ -32,7 +32,7 @@ const CHANNEL_META: Record<
   email: {
     label: "Email",
     icon: Mail,
-    hint: "e.g. support@brokerbridge.app",
+    hint: "e.g. support@brokerloop.app",
   },
   phone: {
     label: "Phone call",
