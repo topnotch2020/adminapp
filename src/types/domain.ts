@@ -61,6 +61,12 @@ export type Property = {
   expiresAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Missing on older listings, which were all posted by brokers. */
+  postedBy?: {
+    role?: "BROKER" | "ADMIN";
+    adminId?: string;
+    adminName?: string;
+  };
 };
 
 export type Notification = {
