@@ -9,7 +9,23 @@ type BrokerListResponse =
       success?: boolean;
     };
 
+/** A broker's listing slots; every listing they own counts, including admin-posted ones. */
+export type BrokerPostingQuota = {
+  planName?: string;
+  used: { total: number; rent: number; sale: number };
+  limit: { total: number; rent: number; sale: number };
+  remaining: { total: number; rent: number; sale: number };
+  canCreateByListingType: { RENT: boolean; SALE: boolean };
+};
+
 export const brokersApi = {
+  async postingQuota(brokerId: string) {
+    const { data } = await api.get<{ data?: BrokerPostingQuota }>(
+      `/admin/brokers/${brokerId}/quota`
+    );
+    return unwrapEnvelope<BrokerPostingQuota>(data);
+  },
+
   async list(params?: {
     limit?: number;
     skip?: number;
