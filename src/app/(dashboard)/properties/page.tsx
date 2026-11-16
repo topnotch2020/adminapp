@@ -418,12 +418,8 @@ function PropertyCard({
       <div className="relative">
         <PropertyImage url={cover} alt={propertyTitle(property)} className="h-48 w-full" width={720} height={432} />
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          <span className="rounded-full shadow-sm" style={{ background: "var(--surface)" }}>
-            <Chip tone={statusInfo.tone}>{statusInfo.label}</Chip>
-          </span>
-          <span className="rounded-full shadow-sm" style={{ background: "var(--surface)" }}>
-            <Chip tone={typeInfo.tone} dot={false}>For {typeInfo.label.toLowerCase()}</Chip>
-          </span>
+          <Chip tone={statusInfo.tone} elevated>{statusInfo.label}</Chip>
+          <Chip tone={typeInfo.tone} dot={false} elevated>For {typeInfo.label.toLowerCase()}</Chip>
         </div>
         {photoCount > 1 ? (
           <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">

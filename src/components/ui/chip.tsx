@@ -17,12 +17,15 @@ export function Chip({
   icon,
   dot = true,
   title,
+  elevated = false,
 }: {
   tone?: Tone;
   children: ReactNode;
   icon?: ReactNode;
   dot?: boolean;
   title?: string;
+  /** Adds a soft shadow, for chips placed on top of photos. */
+  elevated?: boolean;
 }) {
   const color = TONE_COLOR[tone];
   return (
@@ -30,9 +33,11 @@ export function Chip({
       title={title}
       className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium"
       style={{
-        background: `color-mix(in srgb, ${color} 13%, transparent)`,
+        // Tint mixed into the surface colour (not transparency), so the chip
+        // looks the same on a panel, a table row or a photo
+        background: `color-mix(in srgb, ${color} 12%, var(--surface))`,
         color,
-        border: `1px solid color-mix(in srgb, ${color} 22%, transparent)`,
+        boxShadow: elevated ? "0 1px 3px rgba(15, 23, 42, 0.18)" : undefined,
       }}
     >
       {icon ? icon : dot ? <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} /> : null}
