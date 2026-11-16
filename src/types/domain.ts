@@ -41,7 +41,13 @@ export type Property = {
   status?: string;
   bhkType?: string;
   propertyType?: { value?: string; label?: string } | string;
-  pricing?: { price?: number; formattedPrice?: string };
+  pricing?: { price?: number; formattedPrice?: string; deposit?: number; maintenance?: number };
+  furnishing?: string;
+  propertyAge?: string;
+  tenantsAllowed?: string[];
+  area?: { carpet?: number; builtUp?: number };
+  floor?: { totalFloors?: number; level?: string };
+  views?: number;
   address?: {
     projectName?: string;
     areaName?: string;

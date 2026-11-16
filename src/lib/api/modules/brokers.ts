@@ -18,7 +18,32 @@ export type BrokerPostingQuota = {
   canCreateByListingType: { RENT: boolean; SALE: boolean };
 };
 
+export type BrokerDetail = {
+  broker: Broker & {
+    dob?: string;
+    updatedAt?: string;
+    isEmailVerified?: boolean;
+    isPhoneVerified?: boolean;
+    isProfileComplete?: boolean;
+    authProviders?: string[];
+    hasPushToken?: boolean;
+    subscription?: { planName?: string; quota?: { rentLimit?: number; saleLimit?: number } };
+  };
+  quota: BrokerPostingQuota;
+  listings: {
+    total: number;
+    byStatus: Record<string, number>;
+    postedByAdmin: number;
+    totalViews: number;
+  };
+};
+
 export const brokersApi = {
+  async detail(brokerId: string) {
+    const { data } = await api.get<{ data?: BrokerDetail }>(`/admin/brokers/${brokerId}`);
+    return unwrapEnvelope<BrokerDetail>(data);
+  },
+
   async postingQuota(brokerId: string) {
     const { data } = await api.get<{ data?: BrokerPostingQuota }>(
       `/admin/brokers/${brokerId}/quota`

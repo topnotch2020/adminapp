@@ -62,6 +62,8 @@ body {
     radial-gradient(ellipse 60% 40% at 100% 0%, rgba(139, 92, 246, 0.1), transparent);
 }
 
+/* Component classes live in a layer so Tailwind utilities (pl-9, w-full, py-1...) can override them */
+@layer components {
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -139,6 +141,7 @@ body {
 .badge-danger {
   background: color-mix(in srgb, var(--danger) 18%, transparent);
   color: var(--danger);
+}
 }
 
 * {
