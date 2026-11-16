@@ -532,6 +532,7 @@ export default function PropertiesPage() {
         title="Post property for a broker"
         subtitle="Shown on the app under the selected broker"
         onClose={() => setCreateOpen(false)}
+        widthClassName="max-w-3xl"
       >
         {createOpen ? (
           <CreatePropertyForm
