@@ -5,6 +5,7 @@ import { propertiesApi, type CreatePropertyPayload } from "@/lib/api/modules/pro
 import { uploadsApi } from "@/lib/api/modules/uploads";
 import { useToast } from "@/components/providers/toast-provider";
 import { AreaAutocomplete } from "@/components/ui/area-autocomplete";
+import { sizedImageUrl } from "./property-image";
 import { Chip } from "@/components/ui/chip";
 import { brokerStatus } from "@/lib/labels";
 import type { Broker } from "@/types/domain";
@@ -736,11 +737,11 @@ function PhotoUploader({
             return (
               <div
                 key={url}
-                className="group relative aspect-[4/3] overflow-hidden rounded-xl border"
+                className="group relative h-32 overflow-hidden rounded-xl border"
                 style={{ borderColor: isCover ? "var(--primary)" : "var(--border)" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Photo ${index + 1}`} className="h-full w-full object-cover" />
+                <img src={sizedImageUrl(url, 480, 320)} alt={`Photo ${index + 1}`} className="absolute inset-0 h-full w-full object-cover" />
                 {isCover ? (
                   <span
                     className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -776,7 +777,7 @@ function PhotoUploader({
           {Array.from({ length: pending }).map((_, index) => (
             <div
               key={`pending-${index}`}
-              className="skeleton flex aspect-[4/3] items-center justify-center rounded-xl"
+              className="skeleton flex h-32 items-center justify-center rounded-xl"
             >
               <Loader2 size={18} className="animate-spin muted" />
             </div>

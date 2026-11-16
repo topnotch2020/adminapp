@@ -9,6 +9,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { CreatePropertyForm } from "@/components/properties/create-property-form";
 import { PostedByChip, PropertyDetail } from "@/components/properties/property-detail";
 import { usePropertyActions } from "@/components/properties/property-actions";
+import { PropertyImage } from "@/components/properties/property-image";
 import {
   PROPERTY_STATUS,
   brokerOf,
@@ -27,7 +28,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  ImageOff,
   LayoutGrid,
   List,
   MapPin,
@@ -242,7 +242,7 @@ export default function PropertiesPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="panel overflow-hidden">
-              <div className="skeleton aspect-video !rounded-none" />
+              <div className="skeleton h-48 !rounded-none" />
               <div className="space-y-2 p-4">
                 <div className="skeleton h-4 w-1/2" />
                 <div className="skeleton h-3 w-3/4" />
@@ -289,14 +289,15 @@ export default function PropertiesPage() {
                   <tr key={idOf(property)} className="cursor-pointer" onClick={() => setActivePropertyId(idOf(property))}>
                     <td>
                       <div className="flex items-center gap-3">
-                        {cover ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={cover} alt="" className="h-10 w-14 shrink-0 rounded-lg object-cover" />
-                        ) : (
-                          <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--surface-2)" }}>
-                            <ImageOff size={14} className="muted" />
-                          </div>
-                        )}
+                        <PropertyImage
+                          url={cover}
+                          alt=""
+                          variant="thumb"
+                          rounded="rounded-lg"
+                          className="h-10 w-14"
+                          width={112}
+                          height={80}
+                        />
                         <div className="min-w-0">
                           <p className="truncate font-medium">{propertyTitle(property)}</p>
                           <p className="max-w-[260px] truncate text-xs muted">{propertyAddress(property)}</p>
@@ -414,15 +415,8 @@ function PropertyCard({
       className="panel group flex cursor-pointer flex-col overflow-hidden transition hover:shadow-md"
       onClick={onOpen}
     >
-      <div className="relative aspect-video" style={{ background: "var(--surface-2)" }}>
-        {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={propertyTitle(property)} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <ImageOff size={22} className="muted" />
-          </div>
-        )}
+      <div className="relative">
+        <PropertyImage url={cover} alt={propertyTitle(property)} className="h-48 w-full" width={720} height={432} />
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
           <span className="rounded-full shadow-sm" style={{ background: "var(--surface)" }}>
             <Chip tone={statusInfo.tone}>{statusInfo.label}</Chip>

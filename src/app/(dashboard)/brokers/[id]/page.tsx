@@ -7,6 +7,7 @@ import { BrokerAvatar } from "@/components/brokers/broker-avatar";
 import { RoleSelect, StatusSelect, useBrokerControls } from "@/components/brokers/broker-controls";
 import { CreatePropertyForm } from "@/components/properties/create-property-form";
 import { usePropertyActions } from "@/components/properties/property-actions";
+import { PropertyImage } from "@/components/properties/property-image";
 import { PostedByChip, PropertyDetail } from "@/components/properties/property-detail";
 import { Chip } from "@/components/ui/chip";
 import { DetailSidebar } from "@/components/ui/detail-sidebar";
@@ -29,7 +30,6 @@ import {
   Clock,
   Copy,
   Eye,
-  ImageOff,
   Mail,
   Phone,
   Plus,
@@ -245,14 +245,15 @@ export default function BrokerProfilePage() {
                     onClick={() => setActivePropertyId(idOf(property))}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      {cover ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={cover} alt="" className="h-14 w-20 shrink-0 rounded-lg object-cover" />
-                      ) : (
-                        <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--surface-2)" }}>
-                          <ImageOff size={16} className="muted" />
-                        </div>
-                      )}
+                      <PropertyImage
+                        url={cover}
+                        alt=""
+                        variant="thumb"
+                        rounded="rounded-lg"
+                        className="h-14 w-20"
+                        width={160}
+                        height={112}
+                      />
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <p className="truncate font-medium">{propertyTitle(property)}</p>

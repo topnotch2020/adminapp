@@ -15,7 +15,8 @@ import {
   propertyTitle,
 } from "@/lib/labels";
 import type { Property } from "@/types/domain";
-import { Clock, ExternalLink, Eye, ImageOff, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { Clock, ExternalLink, Eye, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { PropertyImage } from "./property-image";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -85,40 +86,39 @@ export function PropertyDetail({ property, actions }: { property: Property; acti
   return (
     <div className="space-y-5 text-sm">
       {/* Gallery */}
-      {images.length ? (
-        <div className="space-y-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={images[Math.min(active, images.length - 1)]}
-            alt={propertyTitle(property)}
-            className="aspect-video w-full rounded-2xl object-cover"
-          />
-          {images.length > 1 ? (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((url, index) => (
-                <button
-                  key={url}
-                  type="button"
-                  onClick={() => setActive(index)}
-                  className="h-14 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition"
-                  style={{ borderColor: index === active ? "var(--primary)" : "transparent" }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Photo ${index + 1}`} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div
-          className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-2xl"
-          style={{ background: "var(--surface-2)" }}
-        >
-          <ImageOff size={22} className="muted" />
-          <p className="text-xs muted">No photos</p>
-        </div>
-      )}
+      <div className="space-y-2">
+        <PropertyImage
+          url={images[Math.min(active, images.length - 1)]}
+          alt={propertyTitle(property)}
+          rounded="rounded-2xl"
+          className="h-64 w-full sm:h-72"
+          width={1200}
+          height={720}
+        />
+        {images.length > 1 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {images.map((url, index) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => setActive(index)}
+                className="shrink-0 rounded-lg border-2 transition"
+                style={{ borderColor: index === active ? "var(--primary)" : "transparent" }}
+              >
+                <PropertyImage
+                  url={url}
+                  alt={`Photo ${index + 1}`}
+                  variant="thumb"
+                  rounded="rounded-md"
+                  className="h-14 w-20"
+                  width={160}
+                  height={112}
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       {/* Title */}
       <div className="space-y-2">
