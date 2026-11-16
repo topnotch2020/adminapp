@@ -1,52 +1,51 @@
 "use client";
 
-import { propertiesApi, type AdminPropertyAction, type PropertyStats } from "@/lib/api/modules/properties";
+import { propertiesApi, type PropertyStats } from "@/lib/api/modules/properties";
 import { useToast } from "@/components/providers/toast-provider";
 import { AreaAutocomplete } from "@/components/ui/area-autocomplete";
-import { CreatePropertyForm } from "@/components/properties/create-property-form";
+import { Chip } from "@/components/ui/chip";
 import { DetailSidebar } from "@/components/ui/detail-sidebar";
-import { Property } from "@/types/domain";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { IconButton } from "@/components/ui/icon-button";
+import { CreatePropertyForm } from "@/components/properties/create-property-form";
+import { PostedByChip, PropertyDetail } from "@/components/properties/property-detail";
+import { usePropertyActions } from "@/components/properties/property-actions";
+import { PropertyImage } from "@/components/properties/property-image";
+import {
+  PROPERTY_STATUS,
+  brokerOf,
+  coverImage,
+  daysUntil,
+  expiryText,
+  formatDate,
+  formatPrice,
+  listingType as listingTypeInfo,
+  propertyAddress,
+  propertyStatus,
+  propertyTitle,
+} from "@/lib/labels";
+import type { Property } from "@/types/domain";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  LayoutGrid,
+  List,
+  MapPin,
+  Plus,
+  RefreshCcw,
+  Search,
+  UserRound,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-function daysUntilExpiry(expiresAt?: string): number | null {
-  if (!expiresAt) return null;
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
-/** "Posted by" label; listings without postedBy predate it and were all posted by brokers. */
-function PostedByBadge({ property }: { property: Property }) {
-  const isAdmin = property.postedBy?.role === "ADMIN";
-  return (
-    <span
-      className="rounded-full px-2 py-1 text-xs font-medium"
-      title={isAdmin ? "Posted from the admin CRM on the broker's behalf" : "Posted by the broker"}
-      style={{
-        background: isAdmin ? "var(--sidebar-active)" : "var(--surface-2)",
-        color: isAdmin ? "var(--primary)" : "var(--muted)",
-      }}
-    >
-      {isAdmin ? `Posted by admin${property.postedBy?.adminName ? ` · ${property.postedBy.adminName}` : ""}` : "Posted by broker"}
-    </span>
-  );
-}
-
-function formatExpiry(expiresAt?: string) {
-  if (!expiresAt) return "—";
-  const days = daysUntilExpiry(expiresAt);
-  const date = new Date(expiresAt).toLocaleDateString();
-  if (days === null) return date;
-  if (days < 0) return `${date} (expired)`;
-  if (days === 0) return `${date} (today)`;
-  return `${date} (${days}d left)`;
-}
+const PAGE_SIZE = 12;
+const idOf = (property: Property) => property.id || property._id || "";
 
 export default function PropertiesPage() {
   const { showToast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [stats, setStats] = useState<PropertyStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actioning, setActioning] = useState<string | null>(null);
   const [listingType, setListingType] = useState<"ALL" | "RENT" | "SALE">("ALL");
   const [status, setStatus] = useState("ALL");
   const [expiringSoonOnly, setExpiringSoonOnly] = useState(false);
@@ -57,7 +56,6 @@ export default function PropertiesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useState<"cards" | "table">("cards");
   const [page, setPage] = useState(1);
-  const pageSize = 8;
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
 
   const loadProperties = useCallback(async () => {
@@ -69,7 +67,7 @@ export default function PropertiesPage() {
           listingType: listingType === "ALL" ? undefined : listingType,
           status: status === "ALL" ? undefined : status,
           search: [search, areaFilter].filter(Boolean).join(" ").trim() || undefined,
-          brokerId: brokerId || undefined,
+          brokerId: brokerId.trim() || undefined,
           expiringSoon: expiringSoonOnly || undefined,
           postedBy: postedBy === "ALL" ? undefined : postedBy,
         }),
@@ -90,232 +88,120 @@ export default function PropertiesPage() {
     void loadProperties();
   }, [loadProperties]);
 
-  const runAction = async (
-    property: Property,
-    action: AdminPropertyAction,
-    options?: { reason?: string; extensionDays?: number }
-  ) => {
-    const id = property.id || property._id;
-    if (!id) return;
+  const { iconActions, fullActions, dialog } = usePropertyActions(loadProperties);
 
-    const confirmMessages: Partial<Record<AdminPropertyAction, string>> = {
-      EXPIRE: "Expire this listing now?",
-      MARK_SOLD: "Mark this property as sold?",
-      SOFT_DELETE: "Soft-delete this property?",
-      RESTORE: "Restore this deleted property?",
-      EXTEND: `Extend expiry by ${options?.extensionDays ?? (property.listingType === "SALE" ? 60 : 30)} days?`,
-    };
-    if (confirmMessages[action] && !window.confirm(confirmMessages[action])) return;
+  const paged = properties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(properties.length / PAGE_SIZE));
+  const activeProperty = properties.find((item) => idOf(item) === activePropertyId) || null;
+  const hasFilters =
+    Boolean(search || areaFilter || brokerId) ||
+    status !== "ALL" ||
+    listingType !== "ALL" ||
+    postedBy !== "ALL" ||
+    expiringSoonOnly;
 
-    setActioning(`${id}:${action}`);
-    try {
-      await propertiesApi.manage(id, action, options);
-      await loadProperties();
-      showToast({ type: "success", title: `Action completed: ${action}` });
-    } catch {
-      showToast({ type: "error", title: `Failed: ${action}` });
-    } finally {
-      setActioning(null);
-    }
+  const clearFilters = () => {
+    setSearch("");
+    setAreaFilter("");
+    setStatus("ALL");
+    setListingType("ALL");
+    setBrokerId("");
+    setPostedBy("ALL");
+    setExpiringSoonOnly(false);
   };
 
-  const moderate = async (property: Property, action: "VERIFY" | "REJECT") => {
-    const id = property.id || property._id;
-    if (!id) return;
-    const reason =
-      action === "REJECT"
-        ? window.prompt("Reason for rejection (optional)") || undefined
-        : undefined;
-    setActioning(`${id}:${action}`);
-    try {
-      await propertiesApi.verify(id, action, reason);
-      await loadProperties();
-      showToast({
-        type: "success",
-        title: action === "VERIFY" ? "Property verified" : "Property rejected",
-      });
-    } catch {
-      showToast({ type: "error", title: "Property moderation failed" });
-    } finally {
-      setActioning(null);
-    }
-  };
-
-  const paged = properties.slice((page - 1) * pageSize, page * pageSize);
-  const totalPages = Math.max(1, Math.ceil(properties.length / pageSize));
-  const activeProperty =
-    properties.find((item) => (item.id || item._id) === activePropertyId) || null;
-  const propertyImages = useMemo(() => {
-    if (!activeProperty?.images?.length) return [];
-    return activeProperty.images
-      .map((img) => img?.url)
-      .filter((img): img is string => Boolean(img));
-  }, [activeProperty]);
-  const activeBroker = useMemo(() => {
-    if (!activeProperty) return null;
-    if (activeProperty.broker) return activeProperty.broker;
-    if (typeof activeProperty.brokerId === "object") {
-      return {
-        name: `${activeProperty.brokerId.fname || ""} ${activeProperty.brokerId.lname || ""}`.trim(),
-        email: activeProperty.brokerId.email,
-        phone: activeProperty.brokerId.phone,
-      };
-    }
-    return null;
-  }, [activeProperty]);
-
-  const renderActions = (property: Property, compact = false) => (
-    <div className={`flex flex-wrap gap-2 ${compact ? "" : "mt-4"}`}>
-      {property.status === "UNVERIFIED" && (
-        <>
-          <button
-            className="btn-primary"
-            disabled={Boolean(actioning)}
-            onClick={() => void moderate(property, "VERIFY")}
-          >
-            Verify
-          </button>
-          <button
-            className="btn-secondary"
-            disabled={Boolean(actioning)}
-            onClick={() => void moderate(property, "REJECT")}
-          >
-            Reject
-          </button>
-        </>
-      )}
-      {property.status === "VERIFIED" && (
-        <>
-          <button
-            className="btn-secondary"
-            disabled={Boolean(actioning)}
-            onClick={() =>
-              void runAction(property, "EXTEND", {
-                extensionDays: property.listingType === "SALE" ? 60 : 30,
-              })
-            }
-          >
-            Extend
-          </button>
-          <button
-            className="btn-secondary"
-            disabled={Boolean(actioning)}
-            onClick={() => void runAction(property, "EXPIRE")}
-          >
-            Expire
-          </button>
-          <button
-            className="btn-secondary"
-            disabled={Boolean(actioning)}
-            onClick={() => void runAction(property, "MARK_SOLD")}
-          >
-            Mark Sold
-          </button>
-        </>
-      )}
-      {property.status === "EXPIRED" && (
-        <button
-          className="btn-primary"
-          disabled={Boolean(actioning)}
-          onClick={() =>
-            void runAction(property, "EXTEND", {
-              extensionDays: property.listingType === "SALE" ? 60 : 30,
-            })
-          }
-        >
-          Reactivate
-        </button>
-      )}
-      <button
-        className="btn-secondary"
-        disabled={Boolean(actioning)}
-        onClick={() => void runAction(property, "SOFT_DELETE")}
-      >
-        Delete
-      </button>
-      <button
-        className="btn-secondary"
-        onClick={() => setActivePropertyId(property.id || property._id || null)}
-      >
-        {compact ? "View" : "View Details"}
-      </button>
-    </div>
-  );
+  const statTiles = [
+    { label: "Total", value: stats?.total ?? properties.length },
+    { label: "Pending review", value: stats?.unverified, tone: "var(--warning)" },
+    { label: "Live", value: stats?.verified, tone: "var(--success)" },
+    { label: "Expiring soon", value: stats?.expiringSoon, tone: "var(--warning)" },
+    { label: "Expired", value: stats?.expired, tone: "var(--danger)" },
+    {
+      label: "Auto-expiry",
+      value: `${stats?.listingExpiryDays?.RENT ?? 30}d / ${stats?.listingExpiryDays?.SALE ?? 60}d`,
+      hint: "Rent / Sale",
+    },
+  ];
 
   return (
     <section className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-        <div className="panel p-4">
-          <p className="text-xs muted">Total</p>
-          <p className="mt-1 text-xl font-semibold">{stats?.total ?? properties.length}</p>
-        </div>
-        <div className="panel p-4">
-          <p className="text-xs muted">Pending</p>
-          <p className="mt-1 text-xl font-semibold">{stats?.unverified ?? "—"}</p>
-        </div>
-        <div className="panel p-4">
-          <p className="text-xs muted">Active</p>
-          <p className="mt-1 text-xl font-semibold">{stats?.verified ?? "—"}</p>
-        </div>
-        <div className="panel p-4">
-          <p className="text-xs muted">Expiring Soon</p>
-          <p className="mt-1 text-xl font-semibold text-amber-600">{stats?.expiringSoon ?? "—"}</p>
-        </div>
-        <div className="panel p-4">
-          <p className="text-xs muted">Expired</p>
-          <p className="mt-1 text-xl font-semibold">{stats?.expired ?? "—"}</p>
-        </div>
-        <div className="panel p-4">
-          <p className="text-xs muted">Auto-expiry</p>
-          <p className="mt-1 text-sm font-medium">
-            Rent {stats?.listingExpiryDays?.RENT ?? 30}d · Sale {stats?.listingExpiryDays?.SALE ?? 60}d
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {statTiles.map((tile) => (
+          <div key={tile.label} className="panel p-4">
+            <p className="text-xs muted">{tile.label}</p>
+            <p className="mt-1 text-xl font-semibold" style={tile.tone ? { color: tile.tone } : undefined}>
+              {tile.value ?? "—"}
+            </p>
+            {tile.hint ? <p className="text-[11px] muted">{tile.hint}</p> : null}
+          </div>
+        ))}
       </div>
-      <div className="panel p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">Properties</p>
-          <button className="btn-primary" onClick={() => setCreateOpen(true)}>
-            + Post property for a broker
-          </button>
+
+      <div className="panel space-y-3 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold">Properties</h2>
+            <p className="text-xs muted">{loading ? "Loading…" : `${properties.length} in current view`}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <IconButton label="Refresh" icon={<RefreshCcw size={15} />} onClick={() => void loadProperties()} />
+            <div className="inline-flex rounded-lg border p-0.5" style={{ borderColor: "var(--border)" }}>
+              {(
+                [
+                  ["cards", <LayoutGrid key="g" size={15} />, "Card view"],
+                  ["table", <List key="l" size={15} />, "Table view"],
+                ] as const
+              ).map(([key, icon, title]) => (
+                <button
+                  key={key}
+                  type="button"
+                  title={title}
+                  aria-label={title}
+                  onClick={() => setView(key)}
+                  className="inline-flex h-7 w-8 items-center justify-center rounded-md transition"
+                  style={{
+                    background: view === key ? "var(--sidebar-active)" : "transparent",
+                    color: view === key ? "var(--primary)" : "var(--muted)",
+                  }}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+            <button className="btn-primary inline-flex items-center gap-1.5" onClick={() => setCreateOpen(true)}>
+              <Plus size={16} /> New property
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
-          <input
-            className="input md:col-span-2"
-            placeholder="Search by project/area/city"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <AreaAutocomplete
-            value={areaFilter}
-            onChange={setAreaFilter}
-            placeholder="Filter by area (Pune)"
-          />
-          <input
-            className="input"
-            placeholder="Filter by brokerId"
-            value={brokerId}
-            onChange={(event) => setBrokerId(event.target.value)}
-          />
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="relative sm:col-span-2">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 muted" />
+            <input
+              className="input w-full pl-9"
+              placeholder="Search project, area or city"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <AreaAutocomplete value={areaFilter} onChange={setAreaFilter} placeholder="Area" className="input w-full" />
+          <select className="input w-full" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="ALL">Any status</option>
+            {Object.entries(PROPERTY_STATUS).map(([value, info]) => (
+              <option key={value} value={value}>{info.label}</option>
+            ))}
+          </select>
           <select
-            className="input"
+            className="input w-full"
             value={listingType}
             onChange={(event) => setListingType(event.target.value as typeof listingType)}
           >
-            <option value="ALL">All listing types</option>
-            <option value="RENT">RENT</option>
-            <option value="SALE">SALE</option>
-          </select>
-          <select className="input" value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="ALL">All statuses</option>
-            <option value="UNVERIFIED">UNVERIFIED</option>
-            <option value="VERIFIED">VERIFIED</option>
-            <option value="EXPIRED">EXPIRED</option>
-            <option value="SOLD">SOLD</option>
-            <option value="DRAFTED">DRAFTED</option>
+            <option value="ALL">Rent & sale</option>
+            <option value="RENT">For rent</option>
+            <option value="SALE">For sale</option>
           </select>
           <select
-            className="input"
+            className="input w-full"
             value={postedBy}
             onChange={(event) => setPostedBy(event.target.value as typeof postedBy)}
           >
@@ -324,214 +210,164 @@ export default function PropertiesPage() {
             <option value="ADMIN">Posted by admin</option>
           </select>
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={expiringSoonOnly}
-              onChange={(event) => setExpiringSoonOnly(event.target.checked)}
-            />
-            Expiring within 2 days only
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button className={`btn-secondary ${view === "cards" ? "opacity-100" : "opacity-70"}`} onClick={() => setView("cards")}>
-              Cards
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpiringSoonOnly((value) => !value)}
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition"
+            style={{
+              borderColor: expiringSoonOnly ? "var(--warning)" : "var(--border)",
+              background: expiringSoonOnly ? "color-mix(in srgb, var(--warning) 12%, transparent)" : "transparent",
+              color: expiringSoonOnly ? "var(--warning)" : "var(--muted)",
+            }}
+          >
+            <Clock size={12} /> Expiring in 2 days
+          </button>
+          <input
+            className="input !py-1 w-56 text-xs"
+            placeholder="Broker ID"
+            value={brokerId}
+            onChange={(event) => setBrokerId(event.target.value)}
+          />
+          {hasFilters ? (
+            <button type="button" className="text-xs font-medium" style={{ color: "var(--primary)" }} onClick={clearFilters}>
+              Clear filters
             </button>
-            <button className={`btn-secondary ${view === "table" ? "opacity-100" : "opacity-70"}`} onClick={() => setView("table")}>
-              Table
-            </button>
-            <button
-              className="btn-secondary"
-              onClick={() => {
-                setSearch("");
-                setAreaFilter("");
-                setStatus("ALL");
-                setListingType("ALL");
-                setBrokerId("");
-                setPostedBy("ALL");
-                setExpiringSoonOnly(false);
-              }}
-            >
-              Clear
-            </button>
-            <button className="btn-primary" onClick={() => void loadProperties()}>
-              Refresh
-            </button>
-          </div>
+          ) : null}
         </div>
-        <p className="mt-2 text-xs muted">{properties.length} properties in current view</p>
       </div>
-      {view === "cards" ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {loading ? (
-            <div className="panel p-5 text-sm muted">Loading properties...</div>
-          ) : properties.length === 0 ? (
-            <div className="panel p-5 text-sm muted">No properties found.</div>
-          ) : (
-            paged.map((property) => (
-              <article key={property.id || property._id} className="panel p-5">
-                <h3 className="text-base font-semibold">
-                  {property.bhkType}{" "}
-                  {typeof property.propertyType === "string"
-                    ? property.propertyType
-                    : property.propertyType?.label}
-                </h3>
-                <p className="mt-1 text-sm muted">
-                  {property.address?.projectName}, {property.address?.areaName},{" "}
-                  {property.address?.city}
-                </p>
-                <div className="mt-2">
-                  <PostedByBadge property={property} />
-                </div>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="rounded-full px-2 py-1" style={{ background: "var(--surface-2)" }}>
-                    {property.status || "UNKNOWN"} · {property.listingType}
-                  </span>
-                  <span className="text-xs muted">{formatExpiry(property.expiresAt)}</span>
-                  <span className="font-medium">
-                    {property.pricing?.formattedPrice
-                      ? `INR ${property.pricing.formattedPrice}`
-                      : property.pricing?.price
-                      ? `INR ${property.pricing.price}`
-                      : "-"}
-                  </span>
-                </div>
-                {renderActions(property)}
-              </article>
-            ))
-          )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="panel overflow-hidden">
+              <div className="skeleton h-48 !rounded-none" />
+              <div className="space-y-2 p-4">
+                <div className="skeleton h-4 w-1/2" />
+                <div className="skeleton h-3 w-3/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : properties.length === 0 ? (
+        <div className="panel flex flex-col items-center gap-2 p-10 text-center">
+          <p className="font-medium">No properties found</p>
+          <p className="text-sm muted">{hasFilters ? "Try clearing the filters." : "Listings appear here once posted."}</p>
+        </div>
+      ) : view === "cards" ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {paged.map((property) => (
+            <PropertyCard
+              key={idOf(property)}
+              property={property}
+              onOpen={() => setActivePropertyId(idOf(property))}
+              actions={iconActions(property)}
+            />
+          ))}
         </div>
       ) : (
-        <div className="panel overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead style={{ background: "var(--surface-2)" }} className="muted">
+        <div className="panel overflow-x-auto">
+          <table className="data-table min-w-[900px]">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Address</th>
-                <th className="px-4 py-3">Listing</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Posted by</th>
-                <th className="px-4 py-3">Expires</th>
-                <th className="px-4 py-3">Price</th>
-                <th className="px-4 py-3">Actions</th>
+                <th>Property</th>
+                <th>Status</th>
+                <th>Broker</th>
+                <th>Price</th>
+                <th>Expires</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paged.map((property) => (
-                <tr key={property.id || property._id} className="border-t" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3">
-                    {property.bhkType}{" "}
-                    {typeof property.propertyType === "string"
-                      ? property.propertyType
-                      : property.propertyType?.label}
-                  </td>
-                  <td className="px-4 py-3">
-                    {property.address?.projectName}, {property.address?.city}
-                  </td>
-                  <td className="px-4 py-3">{property.listingType}</td>
-                  <td className="px-4 py-3">{property.status}</td>
-                  <td className="px-4 py-3"><PostedByBadge property={property} /></td>
-                  <td className="px-4 py-3 text-xs">{formatExpiry(property.expiresAt)}</td>
-                  <td className="px-4 py-3">
-                    {property.pricing?.formattedPrice
-                      ? `INR ${property.pricing.formattedPrice}`
-                      : property.pricing?.price
-                      ? `INR ${property.pricing.price}`
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3">{renderActions(property, true)}</td>
-                </tr>
-              ))}
+              {paged.map((property) => {
+                const statusInfo = propertyStatus(property.status);
+                const typeInfo = listingTypeInfo(property.listingType);
+                const broker = brokerOf(property);
+                const cover = coverImage(property);
+                return (
+                  <tr key={idOf(property)} className="cursor-pointer" onClick={() => setActivePropertyId(idOf(property))}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <PropertyImage
+                          url={cover}
+                          alt=""
+                          variant="thumb"
+                          rounded="rounded-lg"
+                          className="h-10 w-14"
+                          width={112}
+                          height={80}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{propertyTitle(property)}</p>
+                          <p className="max-w-[260px] truncate text-xs muted">{propertyAddress(property)}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-1">
+                        <Chip tone={statusInfo.tone}>{statusInfo.label}</Chip>
+                        <Chip tone={typeInfo.tone} dot={false}>{typeInfo.label}</Chip>
+                        <PostedByChip property={property} />
+                      </div>
+                    </td>
+                    <td className="max-w-[160px] truncate">{broker?.name || "—"}</td>
+                    <td className="whitespace-nowrap font-medium">{formatPrice(property)}</td>
+                    <td className="whitespace-nowrap text-xs">
+                      <ExpiryLabel expiresAt={property.expiresAt} />
+                    </td>
+                    <td>
+                      <div className="flex justify-end">{iconActions(property)}</div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
-      <div className="flex items-center justify-end gap-2">
-        <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
-          Previous
-        </button>
-        <p className="text-sm muted">
-          Page {page} / {totalPages}
-        </p>
-        <button className="btn-secondary" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
-          Next
-        </button>
-      </div>
+
+      {!loading && properties.length > PAGE_SIZE ? (
+        <div className="flex items-center justify-end gap-2">
+          <p className="text-sm muted">
+            Page {page} of {totalPages}
+          </p>
+          <IconButton
+            label="Previous page"
+            icon={<ChevronLeft size={15} />}
+            disabled={page <= 1}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          />
+          <IconButton
+            label="Next page"
+            icon={<ChevronRight size={15} />}
+            disabled={page >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+          />
+        </div>
+      ) : null}
+
       <DetailSidebar
         open={Boolean(activeProperty)}
-        title="Property Detail View"
-        subtitle={
-          activeProperty
-            ? `${activeProperty.address?.projectName || "Untitled"} / ${activeProperty.address?.city || "-"}`
-            : undefined
-        }
+        title="Property"
+        subtitle={activeProperty ? propertyAddress(activeProperty) : undefined}
         onClose={() => setActivePropertyId(null)}
       >
         {activeProperty ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {propertyImages.length === 0 ? (
-                <div className="panel col-span-2 p-4 text-sm muted">No photos available for this property.</div>
-              ) : (
-                propertyImages.map((image, index) => (
-                  <div key={image} className={index === 0 ? "col-span-2" : ""}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={image}
-                      alt={`property-${index + 1}`}
-                      className="h-44 w-full rounded-xl object-cover"
-                    />
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-              <p><span className="muted">Listing:</span> {activeProperty.listingType || "-"}</p>
-              <p><span className="muted">Status:</span> {activeProperty.status || "-"}</p>
-              <p><span className="muted">Expires:</span> {formatExpiry(activeProperty.expiresAt)}</p>
-              <p><span className="muted">Property Type:</span> {typeof activeProperty.propertyType === "string" ? activeProperty.propertyType : activeProperty.propertyType?.label || "-"}</p>
-              <p><span className="muted">BHK:</span> {activeProperty.bhkType || "-"}</p>
-              <p><span className="muted">Price:</span> {activeProperty.pricing?.formattedPrice || activeProperty.pricing?.price || "-"}</p>
-              <p><span className="muted">Facing:</span> {activeProperty.facing || "-"}</p>
-              <p><span className="muted">Project:</span> {activeProperty.address?.projectName || "-"}</p>
-              <p><span className="muted">Area:</span> {activeProperty.address?.areaName || "-"}</p>
-              <p><span className="muted">Sub Area:</span> {activeProperty.address?.subArea || "-"}</p>
-              <p><span className="muted">City:</span> {activeProperty.address?.city || "-"}</p>
-              <p><span className="muted">Pincode:</span> {activeProperty.address?.pincode || "-"}</p>
-              <p><span className="muted">Available From:</span> {activeProperty.availableFrom || "-"}</p>
-              <p><span className="muted">Posted by:</span> <PostedByBadge property={activeProperty} /></p>
-              <p><span className="muted">Broker:</span> {activeBroker?.name || "-"}</p>
-              <p><span className="muted">Broker Email:</span> {activeBroker?.email || "-"}</p>
-              <p><span className="muted">Broker Phone:</span> {activeBroker?.phone || "-"}</p>
-              <p><span className="muted">Updated:</span> {activeProperty.updatedAt ? new Date(activeProperty.updatedAt).toLocaleString() : "-"}</p>
-              <div className="md:col-span-2">
-                <p className="muted">Amenities</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {(activeProperty.amenities || []).length === 0 ? (
-                    <span className="text-sm muted">No amenities listed</span>
-                  ) : (
-                    activeProperty.amenities?.map((amenity) => (
-                      <span key={amenity} className="rounded-full px-2 py-1 text-xs" style={{ background: "var(--surface-2)" }}>
-                        {amenity}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-              <p className="mb-2 text-sm font-medium">Admin actions</p>
-              {renderActions(activeProperty)}
-            </div>
-          </>
+          <PropertyDetail
+            key={idOf(activeProperty)}
+            property={activeProperty}
+            actions={fullActions(activeProperty)}
+          />
         ) : null}
       </DetailSidebar>
+
       <DetailSidebar
         open={createOpen}
-        title="Post property for a broker"
-        subtitle="Shown on the app under the selected broker"
+        title="New property"
+        subtitle="Listed on the app under the selected broker"
         onClose={() => setCreateOpen(false)}
+        widthClassName="max-w-3xl"
       >
         {createOpen ? (
           <CreatePropertyForm
@@ -543,6 +379,78 @@ export default function PropertiesPage() {
           />
         ) : null}
       </DetailSidebar>
+      {dialog}
     </section>
+  );
+}
+
+function ExpiryLabel({ expiresAt }: { expiresAt?: string }) {
+  const days = daysUntil(expiresAt);
+  const urgent = days !== null && days <= 2;
+  return (
+    <span className="inline-flex items-center gap-1" style={{ color: urgent ? "var(--warning)" : "var(--muted)" }}>
+      <Clock size={12} />
+      {expiryText(expiresAt)}
+    </span>
+  );
+}
+
+function PropertyCard({
+  property,
+  onOpen,
+  actions,
+}: {
+  property: Property;
+  onOpen: () => void;
+  actions: React.ReactNode;
+}) {
+  const statusInfo = propertyStatus(property.status);
+  const typeInfo = listingTypeInfo(property.listingType);
+  const broker = brokerOf(property);
+  const cover = coverImage(property);
+  const photoCount = property.images?.length ?? 0;
+
+  return (
+    <article
+      className="panel group flex cursor-pointer flex-col overflow-hidden transition hover:shadow-md"
+      onClick={onOpen}
+    >
+      <div className="relative">
+        <PropertyImage url={cover} alt={propertyTitle(property)} className="h-48 w-full" width={720} height={432} />
+        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+          <Chip tone={statusInfo.tone} elevated>{statusInfo.label}</Chip>
+          <Chip tone={typeInfo.tone} dot={false} elevated>For {typeInfo.label.toLowerCase()}</Chip>
+        </div>
+        {photoCount > 1 ? (
+          <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">
+            {photoCount} photos
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 truncate font-semibold">{propertyTitle(property)}</h3>
+          <p className="shrink-0 font-semibold" style={{ color: "var(--primary)" }}>{formatPrice(property)}</p>
+        </div>
+        <p className="flex min-w-0 items-center gap-1 text-xs muted">
+          <MapPin size={12} className="shrink-0" />
+          <span className="truncate">{propertyAddress(property)}</span>
+        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs muted">
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <UserRound size={12} className="shrink-0" />
+            <span className="max-w-[140px] truncate">{broker?.name || "Unknown broker"}</span>
+          </span>
+          <ExpiryLabel expiresAt={property.expiresAt} />
+          <PostedByChip property={property} />
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+          <span className="text-[11px] muted">Listed {formatDate(property.createdAt)}</span>
+          {actions}
+        </div>
+      </div>
+    </article>
   );
 }

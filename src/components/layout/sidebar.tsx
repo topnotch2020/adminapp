@@ -107,7 +107,7 @@ export function Sidebar() {
             <nav className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const active = pathname === item.href;
+                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const badge = item.badgeKey ? badges[item.badgeKey] : 0;
                 return (
                   <Link
