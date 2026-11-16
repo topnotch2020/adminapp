@@ -1,12 +1,12 @@
 "use client";
 
-import { brokersApi } from "@/lib/api/modules/brokers";
+import { brokersApi, type BrokerPostingQuota } from "@/lib/api/modules/brokers";
 import { propertiesApi, type CreatePropertyPayload } from "@/lib/api/modules/properties";
 import { uploadsApi } from "@/lib/api/modules/uploads";
 import { useToast } from "@/components/providers/toast-provider";
 import { AreaAutocomplete } from "@/components/ui/area-autocomplete";
 import type { Broker } from "@/types/domain";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const PROPERTY_TYPES = [
   { label: "Flat", value: "FLAT" },
@@ -62,6 +62,9 @@ const toDMY = (isoDate: string) => {
 export function CreatePropertyForm({ onCreated, onCancel }: Props) {
   const { showToast } = useToast();
   const [broker, setBroker] = useState<Broker | null>(null);
+  const [quota, setQuota] = useState<BrokerPostingQuota | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const selectedBrokerId = useRef<string | null>(null);
   const [listingType, setListingType] = useState<"RENT" | "SALE">("RENT");
   const [propertyType, setPropertyType] = useState("FLAT");
   const [bhkType, setBhkType] = useState("");
@@ -90,6 +93,25 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const isRent = listingType === "RENT";
+  const slotKey = isRent ? "rent" : "sale";
+  const slotFull = quota ? !quota.canCreateByListingType[listingType] : false;
+
+  const selectBroker = async (next: Broker | null) => {
+    selectedBrokerId.current = next?._id ?? null;
+    setBroker(next);
+    setQuota(null);
+    if (!next) return;
+    setQuotaLoading(true);
+    try {
+      const result = await brokersApi.postingQuota(next._id);
+      // Ignore a late response if the admin already picked someone else
+      if (selectedBrokerId.current === next._id) setQuota(result);
+    } catch {
+      // Not fatal: the server still enforces the quota when posting
+    } finally {
+      if (selectedBrokerId.current === next._id) setQuotaLoading(false);
+    }
+  };
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
@@ -125,6 +147,7 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
 
   const validate = (): string | null => {
     if (!broker) return "Select the broker this listing belongs to";
+    if (slotFull) return `This broker has no ${slotKey} slots left`;
     if (!propertyType) return "Select property type";
     if (!bhkType) return "Select configuration (BHK)";
     if (!toNumber(price)) return isRent ? "Enter rent" : "Enter price";
@@ -192,7 +215,29 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
   return (
     <div className="space-y-5 text-sm">
       <Section title="Broker">
-        <BrokerPicker value={broker} onChange={setBroker} />
+        <BrokerPicker value={broker} onChange={(next) => void selectBroker(next)} />
+        {broker && quotaLoading && <p className="text-xs muted">Checking listing slots…</p>}
+        {broker && quota && (
+          <div
+            className="rounded-lg border px-3 py-2 text-xs"
+            style={{
+              borderColor: slotFull ? "var(--danger)" : "var(--border)",
+              background: "var(--surface-2)",
+            }}
+          >
+            <p>
+              Listing slots{quota.planName ? ` (${quota.planName})` : ""}: Rent{" "}
+              <strong>{quota.used.rent}/{quota.limit.rent}</strong> · Sale{" "}
+              <strong>{quota.used.sale}/{quota.limit.sale}</strong>
+            </p>
+            {slotFull && (
+              <p className="mt-1" style={{ color: "var(--danger)" }}>
+                No {slotKey} slots left. Increase this broker&apos;s {slotKey} slots in
+                Subscriptions or remove one of their {slotKey} listings first.
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-xs muted">
           The listing is shown on the app with this broker&apos;s name and contact. It is marked
           &quot;Posted by admin&quot; only here in the CRM.
@@ -382,7 +427,7 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
         <button className="btn-secondary" onClick={onCancel} disabled={submitting}>
           Cancel
         </button>
-        <button className="btn-primary" onClick={() => void submit()} disabled={submitting || uploading}>
+        <button className="btn-primary" onClick={() => void submit()} disabled={submitting || uploading || slotFull}>
           {submitting ? "Posting…" : "Post property"}
         </button>
       </div>
