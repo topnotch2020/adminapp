@@ -52,7 +52,8 @@ export default function DashboardLayout({
     );
   }
 
-  const title = titleMap[pathname] || "Dashboard";
+  const title =
+    titleMap[pathname] || (pathname.startsWith(`${routePaths.brokers}/`) ? "Broker profile" : "Dashboard");
 
   return (
     <MetricsProvider>

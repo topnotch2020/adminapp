@@ -5,6 +5,8 @@ import { propertiesApi, type CreatePropertyPayload } from "@/lib/api/modules/pro
 import { uploadsApi } from "@/lib/api/modules/uploads";
 import { useToast } from "@/components/providers/toast-provider";
 import { AreaAutocomplete } from "@/components/ui/area-autocomplete";
+import { Chip } from "@/components/ui/chip";
+import { brokerStatus } from "@/lib/labels";
 import type { Broker } from "@/types/domain";
 import {
   Check,
@@ -55,6 +57,8 @@ const INPUT = "input w-full min-w-0";
 type Props = {
   onCreated: () => void;
   onCancel: () => void;
+  /** Preselects the broker, e.g. when opened from a broker's page. */
+  initialBroker?: Broker | null;
 };
 
 const toNumber = (value: string) => (value.trim() && !Number.isNaN(Number(value)) ? Number(value) : undefined);
@@ -78,12 +82,12 @@ const initials = (broker: Broker) =>
  * posting form; the listing is owned by the selected broker, so the mobile app
  * shows that broker's contact details as usual.
  */
-export function CreatePropertyForm({ onCreated, onCancel }: Props) {
+export function CreatePropertyForm({ onCreated, onCancel, initialBroker = null }: Props) {
   const { showToast } = useToast();
-  const [broker, setBroker] = useState<Broker | null>(null);
-  const [quota, setQuota] = useState<BrokerPostingQuota | null>(null);
-  const [quotaLoading, setQuotaLoading] = useState(false);
-  const selectedBrokerId = useRef<string | null>(null);
+  const [broker, setBroker] = useState<Broker | null>(initialBroker);
+  // Quota is tagged with the broker it belongs to, so a late response for a
+  // previously picked broker is never shown for the current one
+  const [quotaState, setQuotaState] = useState<{ brokerId: string; quota: BrokerPostingQuota | null } | null>(null);
   const [listingType, setListingType] = useState<"RENT" | "SALE">("RENT");
   const [propertyType, setPropertyType] = useState("FLAT");
   const [bhkType, setBhkType] = useState("");
@@ -111,6 +115,22 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
   const [pendingUploads, setPendingUploads] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!broker) return;
+    const brokerId = broker._id;
+    let cancelled = false;
+    brokersApi
+      .postingQuota(brokerId)
+      .then((quota) => !cancelled && setQuotaState({ brokerId, quota }))
+      // Not fatal: the server still enforces the quota when posting
+      .catch(() => !cancelled && setQuotaState({ brokerId, quota: null }));
+    return () => {
+      cancelled = true;
+    };
+  }, [broker]);
+
+  const quota = broker && quotaState?.brokerId === broker._id ? quotaState.quota : null;
+  const quotaLoading = Boolean(broker) && quotaState?.brokerId !== broker?._id;
   const isRent = listingType === "RENT";
   const uploading = pendingUploads > 0;
   const slotKey = isRent ? "rent" : "sale";
@@ -118,23 +138,6 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
-
-  const selectBroker = async (next: Broker | null) => {
-    selectedBrokerId.current = next?._id ?? null;
-    setBroker(next);
-    setQuota(null);
-    if (!next) return;
-    setQuotaLoading(true);
-    try {
-      const result = await brokersApi.postingQuota(next._id);
-      // Ignore a late response if the admin already picked someone else
-      if (selectedBrokerId.current === next._id) setQuota(result);
-    } catch {
-      // Not fatal: the server still enforces the quota when posting
-    } finally {
-      if (selectedBrokerId.current === next._id) setQuotaLoading(false);
-    }
-  };
 
   const uploadFiles = async (files: FileList | File[] | null) => {
     const picked = Array.from(files ?? []).filter((file) => file.type.startsWith("image/"));
@@ -241,7 +244,7 @@ export function CreatePropertyForm({ onCreated, onCancel }: Props) {
   return (
     <div className="space-y-4 text-sm">
       <Card step={1} title="Broker" hint="The app shows this broker's name and contact on the listing.">
-        <BrokerPicker value={broker} onChange={(next) => void selectBroker(next)} />
+        <BrokerPicker value={broker} onChange={setBroker} />
         {broker ? (
           <QuotaSummary quota={quota} loading={quotaLoading} listingType={listingType} />
         ) : null}
@@ -923,12 +926,6 @@ function Avatar({ broker }: { broker: Broker }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "VERIFIED"
-      ? "badge-success"
-      : status === "PENDING_VERIFICATION"
-        ? "badge-warning"
-        : "badge-danger";
-  const label = status === "PENDING_VERIFICATION" ? "Pending" : status.toLowerCase();
-  return <span className={`badge ${tone} shrink-0 capitalize`}>{label}</span>;
+  const info = brokerStatus(status);
+  return <Chip tone={info.tone}>{info.label}</Chip>;
 }
