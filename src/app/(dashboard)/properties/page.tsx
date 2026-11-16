@@ -3,6 +3,7 @@
 import { propertiesApi, type AdminPropertyAction, type PropertyStats } from "@/lib/api/modules/properties";
 import { useToast } from "@/components/providers/toast-provider";
 import { AreaAutocomplete } from "@/components/ui/area-autocomplete";
+import { CreatePropertyForm } from "@/components/properties/create-property-form";
 import { DetailSidebar } from "@/components/ui/detail-sidebar";
 import { Property } from "@/types/domain";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +12,23 @@ function daysUntilExpiry(expiresAt?: string): number | null {
   if (!expiresAt) return null;
   const diff = new Date(expiresAt).getTime() - Date.now();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+/** "Posted by" label; listings without postedBy predate it and were all posted by brokers. */
+function PostedByBadge({ property }: { property: Property }) {
+  const isAdmin = property.postedBy?.role === "ADMIN";
+  return (
+    <span
+      className="rounded-full px-2 py-1 text-xs font-medium"
+      title={isAdmin ? "Posted from the admin CRM on the broker's behalf" : "Posted by the broker"}
+      style={{
+        background: isAdmin ? "var(--sidebar-active)" : "var(--surface-2)",
+        color: isAdmin ? "var(--primary)" : "var(--muted)",
+      }}
+    >
+      {isAdmin ? `Posted by admin${property.postedBy?.adminName ? ` · ${property.postedBy.adminName}` : ""}` : "Posted by broker"}
+    </span>
+  );
 }
 
 function formatExpiry(expiresAt?: string) {
@@ -35,6 +53,8 @@ export default function PropertiesPage() {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [brokerId, setBrokerId] = useState("");
+  const [postedBy, setPostedBy] = useState<"ALL" | "BROKER" | "ADMIN">("ALL");
+  const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useState<"cards" | "table">("cards");
   const [page, setPage] = useState(1);
   const pageSize = 8;
@@ -51,6 +71,7 @@ export default function PropertiesPage() {
           search: [search, areaFilter].filter(Boolean).join(" ").trim() || undefined,
           brokerId: brokerId || undefined,
           expiringSoon: expiringSoonOnly || undefined,
+          postedBy: postedBy === "ALL" ? undefined : postedBy,
         }),
         propertiesApi.stats(),
       ]);
@@ -62,7 +83,7 @@ export default function PropertiesPage() {
     } finally {
       setLoading(false);
     }
-  }, [areaFilter, brokerId, expiringSoonOnly, listingType, search, showToast, status]);
+  }, [areaFilter, brokerId, expiringSoonOnly, listingType, postedBy, search, showToast, status]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -252,7 +273,13 @@ export default function PropertiesPage() {
         </div>
       </div>
       <div className="panel p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">Properties</p>
+          <button className="btn-primary" onClick={() => setCreateOpen(true)}>
+            + Post property for a broker
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
           <input
             className="input md:col-span-2"
             placeholder="Search by project/area/city"
@@ -287,6 +314,15 @@ export default function PropertiesPage() {
             <option value="SOLD">SOLD</option>
             <option value="DRAFTED">DRAFTED</option>
           </select>
+          <select
+            className="input"
+            value={postedBy}
+            onChange={(event) => setPostedBy(event.target.value as typeof postedBy)}
+          >
+            <option value="ALL">Posted by anyone</option>
+            <option value="BROKER">Posted by broker</option>
+            <option value="ADMIN">Posted by admin</option>
+          </select>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <label className="flex items-center gap-2 text-sm">
@@ -312,6 +348,7 @@ export default function PropertiesPage() {
                 setStatus("ALL");
                 setListingType("ALL");
                 setBrokerId("");
+                setPostedBy("ALL");
                 setExpiringSoonOnly(false);
               }}
             >
@@ -343,6 +380,9 @@ export default function PropertiesPage() {
                   {property.address?.projectName}, {property.address?.areaName},{" "}
                   {property.address?.city}
                 </p>
+                <div className="mt-2">
+                  <PostedByBadge property={property} />
+                </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span className="rounded-full px-2 py-1" style={{ background: "var(--surface-2)" }}>
                     {property.status || "UNKNOWN"} · {property.listingType}
@@ -370,6 +410,7 @@ export default function PropertiesPage() {
                 <th className="px-4 py-3">Address</th>
                 <th className="px-4 py-3">Listing</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Posted by</th>
                 <th className="px-4 py-3">Expires</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Actions</th>
@@ -389,6 +430,7 @@ export default function PropertiesPage() {
                   </td>
                   <td className="px-4 py-3">{property.listingType}</td>
                   <td className="px-4 py-3">{property.status}</td>
+                  <td className="px-4 py-3"><PostedByBadge property={property} /></td>
                   <td className="px-4 py-3 text-xs">{formatExpiry(property.expiresAt)}</td>
                   <td className="px-4 py-3">
                     {property.pricing?.formattedPrice
@@ -457,7 +499,8 @@ export default function PropertiesPage() {
               <p><span className="muted">Sub Area:</span> {activeProperty.address?.subArea || "-"}</p>
               <p><span className="muted">City:</span> {activeProperty.address?.city || "-"}</p>
               <p><span className="muted">Pincode:</span> {activeProperty.address?.pincode || "-"}</p>
-              <p><span className="muted">Available From:</span> {activeProperty.availableFrom ? new Date(activeProperty.availableFrom).toLocaleDateString() : "-"}</p>
+              <p><span className="muted">Available From:</span> {activeProperty.availableFrom || "-"}</p>
+              <p><span className="muted">Posted by:</span> <PostedByBadge property={activeProperty} /></p>
               <p><span className="muted">Broker:</span> {activeBroker?.name || "-"}</p>
               <p><span className="muted">Broker Email:</span> {activeBroker?.email || "-"}</p>
               <p><span className="muted">Broker Phone:</span> {activeBroker?.phone || "-"}</p>
@@ -482,6 +525,22 @@ export default function PropertiesPage() {
               {renderActions(activeProperty)}
             </div>
           </>
+        ) : null}
+      </DetailSidebar>
+      <DetailSidebar
+        open={createOpen}
+        title="Post property for a broker"
+        subtitle="Shown on the app under the selected broker"
+        onClose={() => setCreateOpen(false)}
+      >
+        {createOpen ? (
+          <CreatePropertyForm
+            onCancel={() => setCreateOpen(false)}
+            onCreated={() => {
+              setCreateOpen(false);
+              void loadProperties();
+            }}
+          />
         ) : null}
       </DetailSidebar>
     </section>

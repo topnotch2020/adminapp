@@ -21,6 +21,30 @@ export type AdminPropertyAction =
   | "SOFT_DELETE"
   | "RESTORE";
 
+/** Same shape the mobile app sends when a broker posts a property. */
+export type CreatePropertyPayload = {
+  listingType: "RENT" | "SALE";
+  propertyType: string;
+  bhkType: string;
+  propertyAge?: string;
+  furnishing?: string;
+  pricing: { price: number; deposit?: number; maintenance?: number };
+  tenantsAllowed?: string[];
+  availableFrom?: string;
+  amenities?: string[];
+  facing?: string;
+  floor?: { totalFloors?: number; level?: string };
+  area?: { carpet?: number; builtUp?: number };
+  address: {
+    projectName: string;
+    areaName: string;
+    subArea: string;
+    city: string;
+    pincode?: string;
+  };
+  images: { url: string; type: "INTERIOR"; isPrimary: boolean }[];
+};
+
 export type PropertyStats = {
   total: number;
   unverified: number;
@@ -42,6 +66,7 @@ export const propertiesApi = {
     search?: string;
     brokerId?: string;
     expiringSoon?: boolean;
+    postedBy?: "BROKER" | "ADMIN";
   }) {
     const query = new URLSearchParams();
     if (params?.limit) query.set("limit", String(params.limit));
@@ -51,10 +76,20 @@ export const propertiesApi = {
     if (params?.search) query.set("search", params.search);
     if (params?.brokerId) query.set("brokerId", params.brokerId);
     if (params?.expiringSoon) query.set("expiringSoon", "true");
+    if (params?.postedBy) query.set("postedBy", params.postedBy);
     const suffix = query.toString() ? `?${query.toString()}` : "";
 
     const { data } = await api.get<PropertiesPayload>(`/admin/properties${suffix}`);
     return unwrapEnvelope<PropertiesPayload>(data);
+  },
+
+  /** Post a listing on a broker's behalf; it goes live immediately under that broker. */
+  async createForBroker(brokerId: string, payload: CreatePropertyPayload) {
+    const { data } = await api.post<{ data?: Property }>("/admin/properties", {
+      brokerId,
+      ...payload,
+    });
+    return unwrapEnvelope<Property>(data);
   },
 
   async stats() {
